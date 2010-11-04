@@ -9,6 +9,12 @@ config PANEL_GENERIC_DPI
 	  Supports LCD Panel used in TI SDP3430 and EVM boards,
 	  OMAP3517 EVM boards and CM-T35.
 
+config PANEL_LAERDAL_RC
+        tristate "Laerdal 640x480"
+        help
+	  Panel driver for DataImage
+	 
+	  
 config PANEL_SHARP_LS037V7DW01
         tristate "Sharp LS037V7DW01 LCD Panel"
         depends on OMAP2_DSS
