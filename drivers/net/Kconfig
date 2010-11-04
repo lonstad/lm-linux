@@ -943,6 +943,13 @@ config NET_NETX
 	  To compile this driver as a module, choose M here. The module
 	  will be called netx-eth.
 
+
+config TI_AM35XX_EMAC
+	tristate "TI AM35XX EMAC Support"
+	depends on ARM && ARCH_AM35XX
+	select PHYLIB
+
+
 config TI_DAVINCI_EMAC
 	tristate "TI DaVinci EMAC Support"
 	depends on ARM && ( ARCH_DAVINCI || ARCH_OMAP3 )
