@@ -89,6 +89,31 @@ config SND_OMAP_SOC_AM3517EVM
 	  Say Y if you want to add support for SoC audio on the OMAP3517 / AM3517
 	  EVM.
 
+config SND_OMAP_SOC_LAERDAL_MCB_1681
+	tristate "8 channel audio codec on Laerdal MCB"
+	depends on SND_OMAP_SOC && MACH_MCB && I2C
+	select SND_SOC_PCM1681
+	select SND_OMAP_SOC_MCBSP
+	help
+	  Say Y if you want to add support for PCM1681 audio on the MCB.
+	  
+config SND_OMAP_SOC_LAERDAL_MCB
+	tristate "Line Audio support Leardal MCB"
+	depends on SND_OMAP_SOC && MACH_MCB && I2C
+	select SND_OMAP_SOC_MCBSP
+	select SND_SOC_TLV320AIC3105
+	help
+	  Say Y if you want to add support for Line audio on the MCB.
+
+	
+config SND_OMAP_SOC_LAERDAL_RC
+	tristate "SoC Audio support Leardal RC"
+	depends on SND_OMAP_SOC && MACH_RC && I2C
+	select SND_OMAP_SOC_MCBSP
+	select SND_SOC_TWL4030
+	help
+	  Say Y if you want to add support for SoC audio on the MCB.
+
 config SND_OMAP_SOC_SDP3430
 	tristate "SoC Audio support for Texas Instruments SDP3430"
 	depends on TWL4030_CORE && SND_OMAP_SOC && MACH_OMAP_3430SDP
