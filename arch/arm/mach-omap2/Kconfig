@@ -34,9 +34,12 @@ config ARCH_OMAP3
 	default y
 	select CPU_V7
 	select USB_ARCH_HAS_EHCI
-	select ARM_L1_CACHE_SHIFT_6 if !ARCH_OMAP4
-	select ARCH_HAS_OPP
-	select PM_OPP if PM
+	select ARM_L1_CACHE_SHIFT_6
+
+config ARCH_AM35XX
+	bool "TI AM3517/3505"
+	depends on ARCH_OMAP3
+	default n
 
 config ARCH_OMAP4
 	bool "TI OMAP4"
@@ -188,6 +191,20 @@ config MACH_OMAP3517EVM
 	depends on ARCH_OMAP3
 	default y
 	select OMAP_PACKAGE_CBB
+	select ARCH_AM35XX
+	
+config MACH_RC
+	bool "Laerdal RC"
+	depends on ARCH_OMAP3
+	default y
+	select OMAP_PACKAGE_CUS
+	
+config MACH_MCB
+	bool "Laerdal MCB"
+	depends on ARCH_OMAP3
+	default y
+	select OMAP_PACKAGE_CBB
+	select ARCH_AM35XX
 
 config MACH_CRANEBOARD
 	bool "AM3517/05 CRANE board"
