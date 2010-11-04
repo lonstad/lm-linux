@@ -195,6 +195,13 @@ config OMAP_DM_TIMER
 	help
 	 Select this option if you want to use OMAP Dual-Mode timers.
 
+	  
+config OMAP_PWM_BL
+	bool "OMAP PWM Backlight"
+	depends on ARCH_OMAP2PLUS
+	select HAVE_PWM
+	default  n
+
 config OMAP_SERIAL_WAKE
 	bool "Enable wake-up events for serial ports"
 	depends on ARCH_OMAP1 && OMAP_MUX
