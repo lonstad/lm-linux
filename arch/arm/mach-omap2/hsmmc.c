@@ -342,6 +342,11 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 				c->caps &= ~MMC_CAP_8_BIT_DATA;
 				c->caps |= MMC_CAP_4_BIT_DATA;
 			}
+#ifdef CONFIG_ARCH_AM35XX
+			reg = omap_ctrl_readl(control_devconf1_offset);
+			reg |= OMAP2_MMCSDIO2ADPCLKISEL;
+			omap_ctrl_writel(reg, control_devconf1_offset);
+#endif
 			/* FALLTHROUGH */
 		case 3:
 			if (mmc->slots[0].features & HSMMC_HAS_PBIAS) {
