@@ -197,7 +197,7 @@ struct device_driver w1_master_driver = {
 struct device w1_master_device = {
 	.parent = NULL,
 	.bus = &w1_bus_type,
-	.init_name = "w1 bus master",
+	//.init_name = "w1 bus master",
 	.driver = &w1_master_driver,
 	.release = &w1_master_release
 };
