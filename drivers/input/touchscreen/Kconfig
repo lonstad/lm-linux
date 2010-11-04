@@ -693,4 +693,12 @@ config TOUCHSCREEN_TPS6507X
 	  To compile this driver as a module, choose M here: the
 	  module will be called tps6507x_ts.
 
+config TOUCHSCREEN_CY8C340
+	tristate "Cypress TrueTouch Multitouch controller"
+	depends on I2C
+
+config TOUCHSCREEN_CY8C300
+	tristate "Cypress Singletouch driver"
+	depends on I2C
+		
 endif
