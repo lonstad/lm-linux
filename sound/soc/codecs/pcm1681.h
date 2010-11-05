@@ -29,8 +29,8 @@
 
 #define PCM1681_CACHEREGNUM    20
 
-extern struct snd_soc_dai pcm1681_dai;
-extern struct snd_soc_codec_device soc_codec_dev_pcm1681;
+extern struct snd_soc_dai_driver pcm1681_dai;
+extern struct snd_soc_codec_driver soc_codec_dev_pcm1681;
 
 
 #endif

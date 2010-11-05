@@ -19,7 +19,7 @@
 #include "pcm1681.h"
 
 static struct snd_soc_codec *pcm1681_codec;
-struct snd_soc_codec_device soc_codec_dev_pcm1681;
+//struct snd_soc_codec_device soc_codec_dev_pcm1681;
 #define PCM1681_NUM_SUPPLIES 3
 static const char *pcm1681_supply_names[PCM1681_NUM_SUPPLIES] = {
 	"VDD",
@@ -27,13 +27,22 @@ static const char *pcm1681_supply_names[PCM1681_NUM_SUPPLIES] = {
 	"VCC2",
 };
 
+struct pcm1681_priv;
+
+struct pcm1681_disable_nb {
+	struct notifier_block nb;
+	struct pcm1681_priv *pcm1681;
+};
 /* codec private data */
 struct pcm1681_priv {
-	struct snd_soc_codec codec;
+	struct snd_soc_codec *codec;
 	struct regulator_bulk_data supplies[PCM1681_NUM_SUPPLIES];
-
-	unsigned int configured;
+	struct pcm1681_disable_nb disable_nb[PCM1681_NUM_SUPPLIES];
+	void *control_data;
+	enum snd_soc_control_type control_type;
 	unsigned int sysclk;
+	int power;
+
 };
 
 static const u8 pcm1681_reg[PCM1681_CACHEREGNUM] = {
@@ -164,11 +173,16 @@ static int pcm1681_write(struct snd_soc_codec *codec, unsigned int reg,
 static int pcm1681_read(struct snd_soc_codec *codec, unsigned int reg,
 		      u8 *value)
 {
-	*value = reg & 0xff;
+	u8 *cache = codec->reg_cache;
 
-	value[0] = i2c_smbus_read_byte_data(codec->control_data, value[0]);
+	if (codec->cache_only)
+		return -EINVAL;
+	if (reg >= PCM1681_CACHEREGNUM)
+		return -1;
 
-	pcm1681_write_reg_cache(codec, reg, *value);
+	*value = codec->hw_read(codec, reg);
+	cache[reg] = *value;
+
 	return 0;
 }
 
@@ -182,21 +196,15 @@ static int pcm1681_add_widgets(struct snd_soc_codec *codec)
 	return 0;
 }
 
-
-
-
 static int pcm1681_pcm_prepare(struct snd_pcm_substream *substream,
 			      struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
 
-	snd_soc_write(codec, PCM1681_DAC, 0x00);
+	snd_soc_write(rtd->codec, PCM1681_DAC, 0x00);
 
 	return 0;
 }
-
 
 static int pcm1681_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
@@ -216,13 +224,11 @@ static void pcm1681_shutdown(struct snd_pcm_substream *substream,
 			    struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
 
 
-	if (!codec->active) {
+	if (!rtd->codec->active) {
 		udelay(50);
-		snd_soc_write(codec, PCM1681_DAC, 0xff);
+		snd_soc_write(rtd->codec, PCM1681_DAC, 0xff);
 	}
 }
 
@@ -232,9 +238,9 @@ static int pcm1681_mute(struct snd_soc_dai *dai, int mute)
 	struct snd_soc_codec *codec = dai->codec;
 
 	if (mute)
-		pcm1681_write(codec, PCM1681_MUTE, 0xff);
+		snd_soc_write(codec, PCM1681_MUTE, 0xff);
 	else
-		pcm1681_write(codec, PCM1681_MUTE, 0);
+		snd_soc_write(codec, PCM1681_MUTE, 0);
 	return 0;
 }
 
@@ -294,7 +300,7 @@ static int pcm1681_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 		return -EINVAL;
 	}
 
-	pcm1681_write(codec_dai->codec, PCM1681_IFACE, iface);
+	snd_soc_write(codec_dai->codec, PCM1681_IFACE, iface);
 	return 0;
 }
 
@@ -348,7 +354,6 @@ static int pcm1681_set_bias_level(struct snd_soc_codec *codec,
 #define PCM1681_FORMATS (SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 static struct snd_soc_dai_ops pcm1681_dai_ops = {
-	//.startup	= pcm1681_pcm_startup,
 	.prepare	= pcm1681_pcm_prepare,
 	.hw_params	= pcm1681_hw_params,
 	.shutdown	= pcm1681_shutdown,
@@ -357,7 +362,7 @@ static struct snd_soc_dai_ops pcm1681_dai_ops = {
 	.set_fmt	= pcm1681_set_dai_fmt,
 };
 
-struct snd_soc_dai pcm1681_dai = {
+struct snd_soc_dai_driver pcm1681_dai = {
 	.name = "PCM1681",
 	.playback = {
 		.stream_name = "Playback",
@@ -371,124 +376,50 @@ struct snd_soc_dai pcm1681_dai = {
 EXPORT_SYMBOL_GPL(pcm1681_dai);
 
 
-static int pcm1681_suspend(struct platform_device *pdev, pm_message_t state)
+static int pcm1681_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
-
 	pcm1681_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 
-static int pcm1681_resume(struct platform_device *pdev)
+static int pcm1681_resume(struct snd_soc_codec *codec)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
-
 	pcm1681_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	return 0;
 }
 
-
-static int pcm1681_probe(struct platform_device *pdev)
+static int pcm1681_regulator_event(struct notifier_block *nb,
+				 unsigned long event, void *data)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec;
-	int ret = 0;
+	struct pcm1681_disable_nb *disable_nb =
+		container_of(nb, struct pcm1681_disable_nb, nb);
+	struct pcm1681_priv *pcm1681 = disable_nb->pcm1681;
 
-	if (pcm1681_codec == NULL) {
-		dev_err(&pdev->dev, "Codec device not registered\n");
-		return -ENODEV;
+	if (event & REGULATOR_EVENT_DISABLE) {
+		pcm1681->codec->cache_sync = 1;
 	}
-
-	socdev->card->codec = pcm1681_codec;
-	codec = pcm1681_codec;
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		dev_err(codec->dev, "failed to create pcms: %d\n", ret);
-		goto pcm_err;
-	}
-
-	snd_soc_add_controls(codec, pcm1681_snd_controls,
-			     ARRAY_SIZE(pcm1681_snd_controls));
-	pcm1681_add_widgets(codec);
-
-#if 0
-	pcm1681_write(codec, 7, 0x55);
-	pcm1681_read(codec, 7, &val);
-	if (val != 0x55)
-		dev_err(&pdev->dev, "Read %d, but exp 0x55\n", (int)val);
-#endif
-	return ret;
-
-pcm_err:
-	return ret;
-}
-
-
-static int pcm1681_remove(struct platform_device *pdev)
-{
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
-
-	/* power down chip */
-	if (codec->control_data)
-		pcm1681_set_bias_level(codec, SND_SOC_BIAS_OFF);
-
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-	kfree(codec->reg_cache);
 
 	return 0;
 }
 
-
-struct snd_soc_codec_device soc_codec_dev_pcm1681 = {
-	.probe = 	pcm1681_probe,
-	.remove = 	pcm1681_remove,
-	.suspend = 	pcm1681_suspend,
-	.resume =	pcm1681_resume,
-};
-EXPORT_SYMBOL_GPL(soc_codec_dev_pcm1681);
-
-
-static int pcm1681_register(struct pcm1681_priv *pcm1681, enum snd_soc_control_type control)
+static int pcm1681_probe(struct snd_soc_codec *codec)
 {
-	int ret, i;
-	struct snd_soc_codec *codec = &pcm1681->codec;
+	struct pcm1681_priv *pcm1681 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+	int i;
 
-	if (pcm1681_codec) {
-		dev_err(codec->dev, "Another pcm1681 is registered\n");
-		ret = -EINVAL;
-		goto err;
-	}
-
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
-
-	snd_soc_codec_set_drvdata(codec, pcm1681);
-	codec->name = "pcm1681";
-	codec->owner = THIS_MODULE;
-	codec->bias_level = SND_SOC_BIAS_OFF;
-	codec->set_bias_level = pcm1681_set_bias_level;
-	codec->dai = &pcm1681_dai;
-	codec->num_dai = 1;
-	codec->write = pcm1681_write;
-	codec->reg_cache_size = PCM1681_CACHEREGNUM;
-	codec->reg_cache = kmemdup(pcm1681_reg, sizeof(pcm1681_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-			return -ENOMEM;
-
-	ret = snd_soc_codec_set_cache_io(codec, 8, 8, control);
-	if (ret < 0) {
+	codec->control_data = pcm1681->control_data;
+	pcm1681->codec = codec;
+	codec->idle_bias_off = 1;
+	ret = snd_soc_codec_set_cache_io(codec, 8, 8, pcm1681->control_type);
+	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
-		goto err;
+		return ret;
 	}
+
+
 
 	for (i = 0; i < ARRAY_SIZE(pcm1681->supplies); i++)
 		pcm1681->supplies[i].supply = pcm1681_supply_names[i];
@@ -497,94 +428,93 @@ static int pcm1681_register(struct pcm1681_priv *pcm1681, enum snd_soc_control_t
 				 pcm1681->supplies);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to request supplies: %d\n", ret);
-		goto err;
+		goto err_get;
+	}
+	for (i = 0; i < ARRAY_SIZE(pcm1681->supplies); i++) {
+		pcm1681->disable_nb[i].nb.notifier_call = pcm1681_regulator_event;
+		pcm1681->disable_nb[i].pcm1681 = pcm1681;
+		ret = regulator_register_notifier(pcm1681->supplies[i].consumer,
+						  &pcm1681->disable_nb[i].nb);
+		if (ret) {
+			dev_err(codec->dev,
+				"Failed to request regulator notifier: %d\n",
+				 ret);
+			goto err_notif;
+		}
 	}
 
-	ret = regulator_bulk_enable(ARRAY_SIZE(pcm1681->supplies),
-				    pcm1681->supplies);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to enable supplies: %d\n", ret);
-		goto err_regulator_get;
-	}
+	codec->cache_only = 1;
+	snd_soc_add_controls(codec, pcm1681_snd_controls,
+				 ARRAY_SIZE(pcm1681_snd_controls));
+
+	pcm1681_add_widgets(codec);
+
+	return ret;
 
 
-	if (ret < 0) {
-		dev_err(codec->dev, "Failed to issue reset: %d\n", ret);
-		goto err_regulator_enable;
-	}
-
-	pcm1681_dai.dev = codec->dev;
-
-	pcm1681_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-
-	pcm1681_codec = codec;
-
-	ret = snd_soc_register_codec(codec);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to register codec: %d\n", ret);
-		goto err_regulator_enable;
-	}
-
-	ret = snd_soc_register_dai(&pcm1681_dai);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to register DAI: %d\n", ret);
-		snd_soc_unregister_codec(codec);
-		goto err_codec;
-	}
-
-	/* Regulators will have been enabled by bias management */
-	regulator_bulk_disable(ARRAY_SIZE(pcm1681->supplies), pcm1681->supplies);
-
-	return 0;
-
-err_codec:
-	snd_soc_unregister_codec(codec);
-err_regulator_enable:
-	regulator_bulk_disable(ARRAY_SIZE(pcm1681->supplies), pcm1681->supplies);
-err_regulator_get:
+err_notif:
+	while (i--)
+		regulator_unregister_notifier(pcm1681->supplies[i].consumer,
+						  &pcm1681->disable_nb[i].nb);
 	regulator_bulk_free(ARRAY_SIZE(pcm1681->supplies), pcm1681->supplies);
-err:
+err_get:
 	kfree(pcm1681);
 	return ret;
 }
 
-static void pcm1681_unregister(struct pcm1681_priv *pcm1681)
+
+static int pcm1681_remove(struct snd_soc_codec *codec)
 {
-	pcm1681_set_bias_level(&pcm1681->codec, SND_SOC_BIAS_OFF);
-	snd_soc_unregister_dai(&pcm1681_dai);
-	snd_soc_unregister_codec(&pcm1681->codec);
+	struct pcm1681_priv *pcm1681 = snd_soc_codec_get_drvdata(codec);
+	int i;
+
+	pcm1681_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	for (i = 0; i < ARRAY_SIZE(pcm1681->supplies); i++)
+		regulator_unregister_notifier(pcm1681->supplies[i].consumer,
+						  &pcm1681->disable_nb[i].nb);
 	regulator_bulk_free(ARRAY_SIZE(pcm1681->supplies), pcm1681->supplies);
-	kfree(pcm1681);
-	pcm1681_codec = NULL;
+
+	return 0;
 }
 
 
+struct snd_soc_codec_driver soc_codec_dev_pcm1681 = {
+	.set_bias_level = pcm1681_set_bias_level,
+	.reg_cache_size = ARRAY_SIZE(pcm1681_reg),
+	.reg_word_size = sizeof(u8),
+	.reg_cache_default = pcm1681_reg,
+	.probe = 	pcm1681_probe,
+	.remove = 	pcm1681_remove,
+	.suspend = 	pcm1681_suspend,
+	.resume =	pcm1681_resume,
+};
+EXPORT_SYMBOL_GPL(soc_codec_dev_pcm1681);
 
 static __devinit int pcm1681_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
 {
+	int ret;
 	struct pcm1681_priv *pcm1681;
-	struct snd_soc_codec *codec;
 
 	pcm1681 = kzalloc(sizeof(struct pcm1681_priv), GFP_KERNEL);
 	if (pcm1681 == NULL)
 		return -ENOMEM;
 
-	codec = &pcm1681->codec;
+	pcm1681->control_data = i2c;
+	pcm1681->control_type = SND_SOC_I2C;
 
 	i2c_set_clientdata(i2c, pcm1681);
-	codec->control_data = i2c;
+	ret = snd_soc_register_codec(&i2c->dev,	&soc_codec_dev_pcm1681, &pcm1681_dai, 1);
+	if (ret < 0)
+		kfree(pcm1681);
 
-	codec->dev = &i2c->dev;
-	codec->hw_write = (hw_write_t)i2c_master_send;
-
-	return pcm1681_register(pcm1681, SND_SOC_I2C);
+	return ret;
 }
 
 static __devexit int pcm1681_i2c_remove(struct i2c_client *client)
 {
-	struct pcm1681_priv *pcm1681 = i2c_get_clientdata(client);
-	pcm1681_unregister(pcm1681);
+	snd_soc_unregister_codec(&client->dev);
+	kfree(i2c_get_clientdata(client));
 	return 0;
 }
 
@@ -596,7 +526,7 @@ MODULE_DEVICE_TABLE(i2c, pcm1681_i2c_id);
 
 static struct i2c_driver pcm1681_i2c_driver = {
 	.driver = {
-		.name = "pcm1681",
+		.name = "pcm1681-codec",
 		.owner = THIS_MODULE,
 	},
 	.probe =    pcm1681_i2c_probe,

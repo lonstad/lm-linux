@@ -61,13 +61,23 @@ static const char *aic3105_supply_names[AIC3105_NUM_SUPPLIES] = {
 	"DRVDD",	/* ADC Analog and Output Driver Voltage */
 };
 
+struct aic3105_priv;
+
+struct aic3105_disable_nb {
+	struct notifier_block nb;
+	struct aic3105_priv *aic3105;
+};
 /* codec private data */
 struct aic3105_priv {
-	struct snd_soc_codec codec;
+	struct snd_soc_codec *codec;
 	struct regulator_bulk_data supplies[AIC3105_NUM_SUPPLIES];
+	struct aic3105_disable_nb disable_nb[AIC3105_NUM_SUPPLIES];
+	void *control_data;
+	enum snd_soc_control_type control_type;
 	unsigned int sysclk;
 	int master;
 	int gpio_reset;
+	int power;
 };
 
 /*
@@ -157,11 +167,16 @@ static int aic3105_write(struct snd_soc_codec *codec, unsigned int reg,
 static int aic3105_read(struct snd_soc_codec *codec, unsigned int reg,
 		      u8 *value)
 {
-	*value = reg & 0xff;
+	u8 *cache = codec->reg_cache;
 
-	value[0] = i2c_smbus_read_byte_data(codec->control_data, value[0]);
+	if (codec->cache_only)
+		return -EINVAL;
+	if (reg >= AIC3105_CACHEREGNUM)
+		return -1;
 
-	aic3105_write_reg_cache(codec, reg, *value);
+	*value = codec->hw_read(codec, reg);
+	cache[reg] = *value;
+
 	return 0;
 }
 
@@ -608,8 +623,7 @@ static int aic3105_hw_params(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
+	struct snd_soc_codec *codec = rtd->codec;
 	struct aic3105_priv *aic3105 = snd_soc_codec_get_drvdata(codec);
 	int codec_clk = 0, bypass_pll = 0, fsref, last_clk = 0;
 	u8 data, j, r, p, pll_q, pll_p = 1, pll_r = 1, pll_j = 1;
@@ -633,7 +647,7 @@ static int aic3105_hw_params(struct snd_pcm_substream *substream,
 		data |= (0x03 << 4);
 		break;
 	}
-	aic3105_write(codec, AIC3105_ASD_INTF_CTRLB, data);
+	snd_soc_write(codec, AIC3105_ASD_INTF_CTRLB, data);
 
 	/* Fsref can be 44100 or 48000 */
 	fsref = (params_rate(params) % 11025 == 0) ? 44100 : 48000;
@@ -648,17 +662,17 @@ static int aic3105_hw_params(struct snd_pcm_substream *substream,
 
 	if (bypass_pll) {
 		pll_q &= 0xf;
-		aic3105_write(codec, AIC3105_PLL_PROGA_REG, pll_q << PLLQ_SHIFT);
-		aic3105_write(codec, AIC3105_GPIOB_REG, CODEC_CLKIN_CLKDIV);
+		snd_soc_write(codec, AIC3105_PLL_PROGA_REG, pll_q << PLLQ_SHIFT);
+		snd_soc_write(codec, AIC3105_GPIOB_REG, CODEC_CLKIN_CLKDIV);
 		/* disable PLL if it is bypassed */
 		reg = aic3105_read_reg_cache(codec, AIC3105_PLL_PROGA_REG);
-		aic3105_write(codec, AIC3105_PLL_PROGA_REG, reg & ~PLL_ENABLE);
+		snd_soc_write(codec, AIC3105_PLL_PROGA_REG, reg & ~PLL_ENABLE);
 
 	} else {
-		aic3105_write(codec, AIC3105_GPIOB_REG, CODEC_CLKIN_PLLDIV);
+		snd_soc_write(codec, AIC3105_GPIOB_REG, CODEC_CLKIN_PLLDIV);
 		/* enable PLL when it is used */
 		reg = aic3105_read_reg_cache(codec, AIC3105_PLL_PROGA_REG);
-		aic3105_write(codec, AIC3105_PLL_PROGA_REG, reg | PLL_ENABLE);
+		snd_soc_write(codec, AIC3105_PLL_PROGA_REG, reg | PLL_ENABLE);
 	}
 
 	/* Route Left DAC to left channel input and
@@ -667,7 +681,7 @@ static int aic3105_hw_params(struct snd_pcm_substream *substream,
 	data |= (fsref == 44100) ? FSREF_44100 : FSREF_48000;
 	if (params_rate(params) >= 64000)
 		data |= DUAL_RATE_MODE;
-	aic3105_write(codec, AIC3105_CODEC_DATAPATH_REG, data);
+	snd_soc_write(codec, AIC3105_CODEC_DATAPATH_REG, data);
 
 	/* codec sample rate select */
 	data = (fsref * 20) / params_rate(params);
@@ -676,7 +690,7 @@ static int aic3105_hw_params(struct snd_pcm_substream *substream,
 	data /= 5;
 	data -= 2;
 	data |= (data << 4);
-	aic3105_write(codec, AIC3105_SAMPLE_RATE_SEL_REG, data);
+	snd_soc_write(codec, AIC3105_SAMPLE_RATE_SEL_REG, data);
 
 	if (bypass_pll)
 		return 0;
@@ -746,11 +760,11 @@ static int aic3105_hw_params(struct snd_pcm_substream *substream,
 
 found:
 	data = aic3105_read_reg_cache(codec, AIC3105_PLL_PROGA_REG);
-	aic3105_write(codec, AIC3105_PLL_PROGA_REG, data | (pll_p << PLLP_SHIFT));
-	aic3105_write(codec, AIC3105_OVRF_STATUS_AND_PLLR_REG, pll_r << PLLR_SHIFT);
-	aic3105_write(codec, AIC3105_PLL_PROGB_REG, pll_j << PLLJ_SHIFT);
-	aic3105_write(codec, AIC3105_PLL_PROGC_REG, (pll_d >> 6) << PLLD_MSB_SHIFT);
-	aic3105_write(codec, AIC3105_PLL_PROGD_REG,
+	snd_soc_write(codec, AIC3105_PLL_PROGA_REG, data | (pll_p << PLLP_SHIFT));
+	snd_soc_write(codec, AIC3105_OVRF_STATUS_AND_PLLR_REG, pll_r << PLLR_SHIFT);
+	snd_soc_write(codec, AIC3105_PLL_PROGB_REG, pll_j << PLLJ_SHIFT);
+	snd_soc_write(codec, AIC3105_PLL_PROGC_REG, (pll_d >> 6) << PLLD_MSB_SHIFT);
+	snd_soc_write(codec, AIC3105_PLL_PROGD_REG,
 		    (pll_d & 0x3F) << PLLD_LSB_SHIFT);
 
 	return 0;
@@ -763,11 +777,11 @@ static int aic3105_mute(struct snd_soc_dai *dai, int mute)
 	u8 rdac_reg = aic3105_read_reg_cache(codec, RDAC_VOL) & ~MUTE_ON;
 
 	if (mute) {
-		aic3105_write(codec, LDAC_VOL, ldac_reg | MUTE_ON);
-		aic3105_write(codec, RDAC_VOL, rdac_reg | MUTE_ON);
+		snd_soc_write(codec, LDAC_VOL, ldac_reg | MUTE_ON);
+		snd_soc_write(codec, RDAC_VOL, rdac_reg | MUTE_ON);
 	} else {
-		aic3105_write(codec, LDAC_VOL, ldac_reg);
-		aic3105_write(codec, RDAC_VOL, rdac_reg);
+		snd_soc_write(codec, LDAC_VOL, ldac_reg);
+		snd_soc_write(codec, RDAC_VOL, rdac_reg);
 	}
 
 	return 0;
@@ -831,13 +845,52 @@ static int aic3105_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	}
 
 	/* set iface */
-	aic3105_write(codec, AIC3105_ASD_INTF_CTRLA, iface_areg);
-	aic3105_write(codec, AIC3105_ASD_INTF_CTRLB, iface_breg);
-	aic3105_write(codec, AIC3105_ASD_INTF_CTRLC, delay);
+	snd_soc_write(codec, AIC3105_ASD_INTF_CTRLA, iface_areg);
+	snd_soc_write(codec, AIC3105_ASD_INTF_CTRLB, iface_breg);
+	snd_soc_write(codec, AIC3105_ASD_INTF_CTRLC, delay);
 
 	return 0;
 }
 
+static int aic3105_set_power(struct snd_soc_codec *codec, int power)
+{
+	struct aic3105_priv *aic3105 = snd_soc_codec_get_drvdata(codec);
+	int i, ret;
+	u8 *cache = codec->reg_cache;
+
+	if (power) {
+		ret = regulator_bulk_enable(ARRAY_SIZE(aic3105->supplies),
+					    aic3105->supplies);
+		if (ret)
+			goto out;
+		aic3105->power = 1;
+		/*
+		 * Reset release and cache sync is necessary only if some
+		 * supply was off or if there were cached writes
+		 */
+		if (!codec->cache_sync)
+			goto out;
+
+		if (aic3105->gpio_reset >= 0) {
+			udelay(1);
+			gpio_set_value(aic3105->gpio_reset, 1);
+		}
+
+		/* Sync reg_cache with the hardware */
+		codec->cache_only = 0;
+		for (i = 0; i < ARRAY_SIZE(aic3105_reg); i++)
+			snd_soc_write(codec, i, cache[i]);
+		codec->cache_sync = 0;
+	} else {
+		aic3105->power = 0;
+		/* HW writes are needless when bias is off */
+		codec->cache_only = 1;
+		ret = regulator_bulk_disable(ARRAY_SIZE(aic3105->supplies),
+					     aic3105->supplies);
+	}
+out:
+	return ret;
+}
 static int aic3105_set_bias_level(struct snd_soc_codec *codec,
 				enum snd_soc_bias_level level)
 {
@@ -848,22 +901,26 @@ static int aic3105_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_ON:
 		break;
 	case SND_SOC_BIAS_PREPARE:
-		if (aic3105->master) {
+		if (codec->bias_level == SND_SOC_BIAS_STANDBY &&
+		    aic3105->master) {
 			/* enable pll */
-			reg = aic3105_read_reg_cache(codec, AIC3105_PLL_PROGA_REG);
-			aic3105_write(codec, AIC3105_PLL_PROGA_REG,
-				    reg | PLL_ENABLE);
+			reg = snd_soc_read(codec, AIC3105_PLL_PROGA_REG);
+			snd_soc_write(codec, AIC3105_PLL_PROGA_REG, reg | PLL_ENABLE);
 		}
 		break;
 	case SND_SOC_BIAS_STANDBY:
-		/* fall through and disable pll */
-	case SND_SOC_BIAS_OFF:
-		if (aic3105->master) {
+		if (!aic3105->power)
+			aic3105_set_power(codec, 1);
+		if (codec->bias_level == SND_SOC_BIAS_PREPARE &&
+		    aic3105->master) {
 			/* disable pll */
-			reg = aic3105_read_reg_cache(codec, AIC3105_PLL_PROGA_REG);
-			aic3105_write(codec, AIC3105_PLL_PROGA_REG,
-				    reg & ~PLL_ENABLE);
+			reg = snd_soc_read(codec, AIC3105_PLL_PROGA_REG);
+			snd_soc_write(codec, AIC3105_PLL_PROGA_REG, reg & ~PLL_ENABLE);
 		}
+		break;
+	case SND_SOC_BIAS_OFF:
+		if (aic3105->power)
+			aic3105_set_power(codec, 0);
 		break;
 	}
 	codec->bias_level = level;
@@ -899,7 +956,7 @@ static struct snd_soc_dai_ops aic3105_dai_ops = {
 	.set_fmt	= aic3105_set_dai_fmt,
 };
 
-struct snd_soc_dai aic3105_dai = {
+struct snd_soc_dai_driver aic3105_dai = {
 	.name = "tlv320aic3105",
 	.playback = {
 		.stream_name = "Playback",
@@ -917,20 +974,15 @@ struct snd_soc_dai aic3105_dai = {
 };
 EXPORT_SYMBOL_GPL(aic3105_dai);
 
-static int aic3105_suspend(struct platform_device *pdev, pm_message_t state)
+static int aic3105_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
-
 	aic3105_set_bias_level(codec, SND_SOC_BIAS_OFF);
-
 	return 0;
 }
 
-static int aic3105_resume(struct platform_device *pdev)
+static int aic3105_resume(struct snd_soc_codec *codec)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
+
 	int i;
 	u8 data[2];
 	u8 *cache = codec->reg_cache;
@@ -955,77 +1007,61 @@ static int aic3105_init(struct snd_soc_codec *codec)
 {
 	int reg;
 
-	mutex_init(&codec->mutex);
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
-
-	codec->name = "tlv320aic3105";
-	codec->owner = THIS_MODULE;
-	codec->read = aic3105_read_reg_cache;
-	codec->write = aic3105_write;
-	codec->set_bias_level = aic3105_set_bias_level;
-	codec->dai = &aic3105_dai;
-	codec->num_dai = 1;
-	codec->reg_cache_size = ARRAY_SIZE(aic3105_reg);
-	codec->reg_cache = kmemdup(aic3105_reg, sizeof(aic3105_reg), GFP_KERNEL);
-	if (codec->reg_cache == NULL)
-		return -ENOMEM;
-
-	aic3105_write(codec, AIC3105_PAGE_SELECT, PAGE0_SELECT);
-	aic3105_write(codec, AIC3105_RESET, SOFT_RESET);
+	snd_soc_write(codec, AIC3105_PAGE_SELECT, PAGE0_SELECT);
+	snd_soc_write(codec, AIC3105_RESET, SOFT_RESET);
 
 	/* DAC default volume and mute */
-	aic3105_write(codec, AIC3105_ASD_INTF_CTRLB, 0x01);	// Soft mute
-	aic3105_write(codec, LDAC_VOL, DEFAULT_VOL | MUTE_ON);
-	aic3105_write(codec, RDAC_VOL, DEFAULT_VOL | MUTE_ON);
+	snd_soc_write(codec, AIC3105_ASD_INTF_CTRLB, 0x01);	// Soft mute
+	snd_soc_write(codec, LDAC_VOL, DEFAULT_VOL | MUTE_ON);
+	snd_soc_write(codec, RDAC_VOL, DEFAULT_VOL | MUTE_ON);
 
 	/* DAC to HP default volume and route to Output mixer */
-	aic3105_write(codec, DACL1_2_HPLOUT_VOL, DEFAULT_VOL | ROUTE_ON);
-	aic3105_write(codec, DACR1_2_HPROUT_VOL, DEFAULT_VOL | ROUTE_ON);
-	aic3105_write(codec, DACL1_2_HPLCOM_VOL, DEFAULT_VOL | ROUTE_ON);
-	aic3105_write(codec, DACR1_2_HPRCOM_VOL, DEFAULT_VOL | ROUTE_ON);
+	snd_soc_write(codec, DACL1_2_HPLOUT_VOL, DEFAULT_VOL | ROUTE_ON);
+	snd_soc_write(codec, DACR1_2_HPROUT_VOL, DEFAULT_VOL | ROUTE_ON);
+	snd_soc_write(codec, DACL1_2_HPLCOM_VOL, DEFAULT_VOL | ROUTE_ON);
+	snd_soc_write(codec, DACR1_2_HPRCOM_VOL, DEFAULT_VOL | ROUTE_ON);
 	/* DAC to Line Out default volume and route to Output mixer */
-	aic3105_write(codec, DACL1_2_LLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
-	aic3105_write(codec, DACR1_2_RLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
+	snd_soc_write(codec, DACL1_2_LLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
+	snd_soc_write(codec, DACR1_2_RLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
 
 	/* unmute all outputs */
 	reg = aic3105_read_reg_cache(codec, LLOPM_CTRL);
-	aic3105_write(codec, LLOPM_CTRL, reg | UNMUTE);
+	snd_soc_write(codec, LLOPM_CTRL, reg | UNMUTE);
 	reg = aic3105_read_reg_cache(codec, RLOPM_CTRL);
-	aic3105_write(codec, RLOPM_CTRL, reg | UNMUTE);
+	snd_soc_write(codec, RLOPM_CTRL, reg | UNMUTE);
 	reg = aic3105_read_reg_cache(codec, HPLOUT_CTRL);
-	aic3105_write(codec, HPLOUT_CTRL, reg | UNMUTE);
+	snd_soc_write(codec, HPLOUT_CTRL, reg | UNMUTE);
 	reg = aic3105_read_reg_cache(codec, HPROUT_CTRL);
-	aic3105_write(codec, HPROUT_CTRL, reg | UNMUTE);
+	snd_soc_write(codec, HPROUT_CTRL, reg | UNMUTE);
 	reg = aic3105_read_reg_cache(codec, HPLCOM_CTRL);
-	aic3105_write(codec, HPLCOM_CTRL, reg | UNMUTE);
+	snd_soc_write(codec, HPLCOM_CTRL, reg | UNMUTE);
 	reg = aic3105_read_reg_cache(codec, HPRCOM_CTRL);
-	aic3105_write(codec, HPRCOM_CTRL, reg | UNMUTE);
+	snd_soc_write(codec, HPRCOM_CTRL, reg | UNMUTE);
 
 	/* ADC default volume and unmute */
-	aic3105_write(codec, LADC_VOL, DEFAULT_GAIN);
-	aic3105_write(codec, RADC_VOL, DEFAULT_GAIN);
+	snd_soc_write(codec, LADC_VOL, DEFAULT_GAIN);
+	snd_soc_write(codec, RADC_VOL, DEFAULT_GAIN);
 	/* By default route Line1 to ADC PGA mixer */
-	aic3105_write(codec, LINE1L_2_LADC_CTRL, 0x0);
-	aic3105_write(codec, LINE1R_2_RADC_CTRL, 0x0);
+	snd_soc_write(codec, LINE1L_2_LADC_CTRL, 0x0);
+	snd_soc_write(codec, LINE1R_2_RADC_CTRL, 0x0);
 
 	/* PGA to HP Bypass default volume, disconnect from Output Mixer */
-	aic3105_write(codec, PGAL_2_HPLOUT_VOL, DEFAULT_VOL);
-	aic3105_write(codec, PGAR_2_HPROUT_VOL, DEFAULT_VOL);
-	aic3105_write(codec, PGAL_2_HPLCOM_VOL, DEFAULT_VOL);
-	aic3105_write(codec, PGAR_2_HPRCOM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, PGAL_2_HPLOUT_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, PGAR_2_HPROUT_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, PGAL_2_HPLCOM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, PGAR_2_HPRCOM_VOL, DEFAULT_VOL);
 	/* PGA to Line Out default volume, disconnect from Output Mixer */
-	aic3105_write(codec, PGAL_2_LLOPM_VOL, DEFAULT_VOL);
-	aic3105_write(codec, PGAR_2_RLOPM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, PGAL_2_LLOPM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, PGAR_2_RLOPM_VOL, DEFAULT_VOL);
 
 	/* Line2 to HP Bypass default volume, disconnect from Output Mixer */
-	aic3105_write(codec, LINE2L_2_HPLOUT_VOL, DEFAULT_VOL);
-	aic3105_write(codec, LINE2R_2_HPROUT_VOL, DEFAULT_VOL);
-	aic3105_write(codec, LINE2L_2_HPLCOM_VOL, DEFAULT_VOL);
-	aic3105_write(codec, LINE2R_2_HPRCOM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, LINE2L_2_HPLOUT_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, LINE2R_2_HPROUT_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, LINE2L_2_HPLCOM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, LINE2R_2_HPRCOM_VOL, DEFAULT_VOL);
 	/* Line2 Line Out default volume, disconnect from Output Mixer */
-	aic3105_write(codec, LINE2L_2_LLOPM_VOL, DEFAULT_VOL);
-	aic3105_write(codec, LINE2R_2_RLOPM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, LINE2L_2_LLOPM_VOL, DEFAULT_VOL);
+	snd_soc_write(codec, LINE2R_2_RLOPM_VOL, DEFAULT_VOL);
 
 	/* off, with power on */
 	aic3105_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
@@ -1033,55 +1069,27 @@ static int aic3105_init(struct snd_soc_codec *codec)
 	return 0;
 }
 
-static struct snd_soc_codec *aic3105_codec;
-
-static int aic3105_register(struct snd_soc_codec *codec)
+static int aic3105_regulator_event(struct notifier_block *nb,
+				 unsigned long event, void *data)
 {
-	int ret;
+	struct aic3105_disable_nb *disable_nb =
+		container_of(nb, struct aic3105_disable_nb, nb);
+	struct aic3105_priv *aic3105 = disable_nb->aic3105;
 
-	ret = aic3105_init(codec);
-	if (ret < 0) {
-		dev_err(codec->dev, "Failed to initialise device\n");
-		return ret;
-	}
-
-	aic3105_codec = codec;
-
-	ret = snd_soc_register_codec(codec);
-	if (ret) {
-		dev_err(codec->dev, "Failed to register codec\n");
-		return ret;
-	}
-
-	ret = snd_soc_register_dai(&aic3105_dai);
-	if (ret) {
-		dev_err(codec->dev, "Failed to register dai\n");
-		snd_soc_unregister_codec(codec);
-		return ret;
+	if (event & REGULATOR_EVENT_DISABLE) {
+		/*
+		 * Put codec to reset and require cache sync as at least one
+		 * of the supplies was disabled
+		 */
+		if (aic3105->gpio_reset >= 0)
+			gpio_set_value(aic3105->gpio_reset, 0);
+		aic3105->codec->cache_sync = 1;
 	}
 
 	return 0;
 }
 
-static int aic3105_unregister(struct aic3105_priv *aic3105)
-{
-	aic3105_set_bias_level(&aic3105->codec, SND_SOC_BIAS_OFF);
 
-	snd_soc_unregister_dai(&aic3105_dai);
-	snd_soc_unregister_codec(&aic3105->codec);
-
-	if (aic3105->gpio_reset >= 0) {
-		gpio_set_value(aic3105->gpio_reset, 0);
-		gpio_free(aic3105->gpio_reset);
-	}
-	regulator_bulk_disable(ARRAY_SIZE(aic3105->supplies), aic3105->supplies);
-	regulator_bulk_free(ARRAY_SIZE(aic3105->supplies), aic3105->supplies);
-
-	kfree(aic3105);
-	aic3105_codec = NULL;
-
-	return 0;
-}
 
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
 /*
@@ -1096,10 +1104,10 @@ static int aic3105_unregister(struct aic3105_priv *aic3105)
 static int aic3105_i2c_probe(struct i2c_client *i2c,
 			   const struct i2c_device_id *id)
 {
-	struct snd_soc_codec *codec;
-	struct aic3105_priv *aic3105;
 	struct aic3105_pdata *pdata = i2c->dev.platform_data;
-	int ret, i;
+	struct aic3105_priv *aic3105;
+	int ret;
+	const struct i2c_device_id *tbl;
 
 	aic3105 = kzalloc(sizeof(struct aic3105_priv), GFP_KERNEL);
 	if (aic3105 == NULL) {
@@ -1107,62 +1115,29 @@ static int aic3105_i2c_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 	}
 
-	codec = &aic3105->codec;
-	codec->dev = &i2c->dev;
-	snd_soc_codec_set_drvdata(codec, aic3105);
-	codec->control_data = i2c;
-	codec->hw_write = (hw_write_t) i2c_master_send;
+	aic3105->control_data = i2c;
+	aic3105->control_type = SND_SOC_I2C;
 
 	i2c_set_clientdata(i2c, aic3105);
-
-	aic3105->gpio_reset = -1;
-	if (pdata && pdata->gpio_reset >= 0) {
-		ret = gpio_request(pdata->gpio_reset, "tlv320aic3105 reset");
-		if (ret != 0)
-			goto err_gpio;
+	if (pdata) {
 		aic3105->gpio_reset = pdata->gpio_reset;
-		gpio_direction_output(aic3105->gpio_reset, 0);
+	} else {
+		aic3105->gpio_reset = -1;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(aic3105->supplies); i++)
-		aic3105->supplies[i].supply = aic3105_supply_names[i];
-
-	ret = regulator_bulk_get(codec->dev, ARRAY_SIZE(aic3105->supplies),
-				 aic3105->supplies);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to request supplies: %d\n", ret);
-		goto err_get;
-	}
-
-	ret = regulator_bulk_enable(ARRAY_SIZE(aic3105->supplies),
-				    aic3105->supplies);
-	if (ret != 0) {
-		dev_err(codec->dev, "Failed to enable supplies: %d\n", ret);
-		goto err_enable;
-	}
-
-	if (aic3105->gpio_reset >= 0) {
-		udelay(1);
-		gpio_set_value(aic3105->gpio_reset, 1);
-	}
-
-	return aic3105_register(codec);
-
-err_enable:
-	regulator_bulk_free(ARRAY_SIZE(aic3105->supplies), aic3105->supplies);
-err_get:
-	if (aic3105->gpio_reset >= 0)
-		gpio_free(aic3105->gpio_reset);
-err_gpio:
-	kfree(aic3105);
+	ret = snd_soc_register_codec(&i2c->dev,
+			&soc_codec_dev_aic3105, &aic3105_dai, 1);
+	if (ret < 0)
+		kfree(aic3105);
 	return ret;
+
 }
 
 static int aic3105_i2c_remove(struct i2c_client *client)
 {
-	struct aic3105_priv *aic3105 = i2c_get_clientdata(client);
-
-	return aic3105_unregister(aic3105);
+	snd_soc_unregister_codec(&client->dev);
+	kfree(i2c_get_clientdata(client));
+	return 0;
 }
 
 static const struct i2c_device_id aic3105_i2c_id[] = {
@@ -1175,7 +1150,7 @@ MODULE_DEVICE_TABLE(i2c, aic3105_i2c_id);
 /* machine i2c codec control layer */
 static struct i2c_driver aic3105_i2c_driver = {
 	.driver = {
-		.name = "aic3105 I2C Codec",
+		.name = "tlv320aic3105-codec",
 		.owner = THIS_MODULE,
 	},
 	.probe	= aic3105_i2c_probe,
@@ -1197,33 +1172,55 @@ static inline void aic3105_i2c_exit(void)
 {
 	i2c_del_driver(&aic3105_i2c_driver);
 }
-#else
-static inline void aic3105_i2c_init(void) { }
-static inline void aic3105_i2c_exit(void) { }
+
 #endif
 
-static int aic3105_probe(struct platform_device *pdev)
+static int aic3105_probe(struct snd_soc_codec *codec)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct aic3105_setup_data *setup;
-	struct snd_soc_codec *codec;
+	struct aic3105_priv *aic3105 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
+	int i;
 
-	codec = aic3105_codec;
-	if (!codec) {
-		dev_err(&pdev->dev, "Codec not registered\n");
-		return -ENODEV;
+	codec->control_data = aic3105->control_data;
+	aic3105->codec = codec;
+	codec->idle_bias_off = 1;
+	ret = snd_soc_codec_set_cache_io(codec, 8, 8, aic3105->control_type);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
+		return ret;
 	}
 
-	socdev->card->codec = codec;
-	setup = socdev->codec_data;
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
-	if (ret < 0) {
-		printk(KERN_ERR "aic3105: failed to create pcms\n");
-		goto pcm_err;
+	if (aic3105->gpio_reset >= 0) {
+		ret = gpio_request(aic3105->gpio_reset, "tlv320aic3105 reset");
+		if (ret != 0)
+			goto err_gpio;
+		gpio_direction_output(aic3105->gpio_reset, 0);
 	}
+
+	for (i = 0; i < ARRAY_SIZE(aic3105->supplies); i++)
+		aic3105->supplies[i].supply = aic3105_supply_names[i];
+
+	ret = regulator_bulk_get(codec->dev, ARRAY_SIZE(aic3105->supplies),
+				 aic3105->supplies);
+	if (ret != 0) {
+		dev_err(codec->dev, "Failed to request supplies: %d\n", ret);
+		goto err_get;
+	}
+	for (i = 0; i < ARRAY_SIZE(aic3105->supplies); i++) {
+		aic3105->disable_nb[i].nb.notifier_call = aic3105_regulator_event;
+		aic3105->disable_nb[i].aic3105 = aic3105;
+		ret = regulator_register_notifier(aic3105->supplies[i].consumer,
+						  &aic3105->disable_nb[i].nb);
+		if (ret) {
+			dev_err(codec->dev,
+				"Failed to request regulator notifier: %d\n",
+				 ret);
+			goto err_notif;
+		}
+	}
+
+	codec->cache_only = 1;
+	aic3105_init(codec);
 
 	snd_soc_add_controls(codec, aic3105_snd_controls,
 			     ARRAY_SIZE(aic3105_snd_controls));
@@ -1232,29 +1229,43 @@ static int aic3105_probe(struct platform_device *pdev)
 
 	return ret;
 
-pcm_err:
-	kfree(codec->reg_cache);
+
+err_notif:
+	while (i--)
+		regulator_unregister_notifier(aic3105->supplies[i].consumer,
+						  &aic3105->disable_nb[i].nb);
+	regulator_bulk_free(ARRAY_SIZE(aic3105->supplies), aic3105->supplies);
+err_get:
+	if (aic3105->gpio_reset >= 0)
+		gpio_free(aic3105->gpio_reset);
+err_gpio:
+	kfree(aic3105);
 	return ret;
 }
 
-static int aic3105_remove(struct platform_device *pdev)
+static int aic3105_remove(struct snd_soc_codec *codec)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
+	struct aic3105_priv *aic3105 = snd_soc_codec_get_drvdata(codec);
+	int i;
 
-	/* power down chip */
-	if (codec->control_data)
-		aic3105_set_bias_level(codec, SND_SOC_BIAS_OFF);
-
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-
-	kfree(codec->reg_cache);
+	aic3105_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	if (aic3105->gpio_reset >= 0) {
+		gpio_set_value(aic3105->gpio_reset, 0);
+		gpio_free(aic3105->gpio_reset);
+	}
+	for (i = 0; i < ARRAY_SIZE(aic3105->supplies); i++)
+		regulator_unregister_notifier(aic3105->supplies[i].consumer,
+						  &aic3105->disable_nb[i].nb);
+	regulator_bulk_free(ARRAY_SIZE(aic3105->supplies), aic3105->supplies);
 
 	return 0;
 }
 
-struct snd_soc_codec_device soc_codec_dev_aic3105 = {
+struct snd_soc_codec_driver soc_codec_dev_aic3105 = {
+	.set_bias_level = aic3105_set_bias_level,
+	.reg_cache_size = ARRAY_SIZE(aic3105_reg),
+	.reg_word_size = sizeof(u8),
+	.reg_cache_default = aic3105_reg,
 	.probe = aic3105_probe,
 	.remove = aic3105_remove,
 	.suspend = aic3105_suspend,

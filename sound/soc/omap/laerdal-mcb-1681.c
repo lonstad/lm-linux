@@ -23,8 +23,8 @@ static int mcb1681_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
-	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	int ret;
 	unsigned int fmt_dai, fmt_cpu;
 	unsigned ch = params_channels(params);
@@ -99,9 +99,9 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 };
 
-static int mcb1681_init(struct snd_soc_codec *codec)
+static int mcb1681_init(struct snd_soc_pcm_runtime *rtd)
 {
-
+	struct snd_soc_codec *codec = rtd->codec;
 	snd_soc_dapm_new_controls(codec, soc_pcm1681_dapm_widgets,
 				  ARRAY_SIZE(soc_pcm1681_dapm_widgets));
 	/* Set up davinci-evm specific audio path audio_map */
@@ -126,8 +126,10 @@ static int mcb1681_init(struct snd_soc_codec *codec)
 static struct snd_soc_dai_link mcb1681_dai = {
 	.name = "PCM1681",
 	.stream_name = "PCM1681_STREAM",
-	.cpu_dai = &omap_mcbsp_dai[1],
-	.codec_dai = &pcm1681_dai,
+	.cpu_dai_name ="omap-mcbsp-dai.1",
+	.codec_dai_name = "PCM1681",
+	.platform_name = "omap-pcm-audio",
+	.codec_name = "pcm1681-codec.2-004c",
 	.init = mcb1681_init,
 	.ops = &mcb1681_ops,
 };
@@ -135,17 +137,9 @@ static struct snd_soc_dai_link mcb1681_dai = {
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_mcb1681 = {
 	.name = "mcb1681",
-	.platform = &omap_soc_platform,
 	.dai_link = &mcb1681_dai,
 	.num_links = 1,
 };
-
-/* Audio subsystem */
-struct snd_soc_device mcb1681_snd_devdata = {
-	.card = &snd_soc_mcb1681,
-	.codec_dev = &soc_codec_dev_pcm1681,
-};
-EXPORT_SYMBOL_GPL(mcb1681_snd_devdata);
 
 static struct platform_device *mcb1681_snd_device;
 
@@ -162,10 +156,7 @@ static int __init mcb1681_soc_init(void)
 		return -ENOMEM;
 	}
 
-	platform_set_drvdata(mcb1681_snd_device, &mcb1681_snd_devdata);
-	mcb1681_snd_devdata.dev = &mcb1681_snd_device->dev;
-	*(unsigned int *)mcb1681_dai.cpu_dai->private_data = 1; /* McBSP2 */
-
+	platform_set_drvdata(mcb1681_snd_device, &snd_soc_mcb1681);
 	ret = platform_device_add(mcb1681_snd_device);
 	if (ret)
 		goto err1;

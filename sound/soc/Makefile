@@ -18,3 +18,9 @@ obj-$(CONFIG_SND_SOC)	+= samsung/
 obj-$(CONFIG_SND_SOC)	+= s6000/
 obj-$(CONFIG_SND_SOC)	+= sh/
 obj-$(CONFIG_SND_SOC)	+= txx9/
+
+CFLAGS_REMOVE_soc-core.o := -Os
+CFLAGS_REMOVE_soc-dapm.o := -Os
+CFLAGS_REMOVE_soc-jack.o := -Os
+CFLAGS_REMOVE_soc-cache.o := -Os
+CFLAGS_REMOVE_soc-utils.o := -Os

@@ -369,6 +369,7 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		dma_data->data_type = OMAP_DMA_DATA_TYPE_S16;
 		wlen = 16;
 		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
 	case SNDRV_PCM_FORMAT_S32_LE:
 		dma_data->data_type = OMAP_DMA_DATA_TYPE_S32;
 		wlen = 32;
@@ -459,6 +460,14 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_16);
 		regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_16);
 		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		/* Set word lengths */
+		regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_24);
+		regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_24);
+		regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_24);
+		regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_24);
+		break;
+
 	case SNDRV_PCM_FORMAT_S32_LE:
 		/* Set word lengths */
 		regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_32);
@@ -493,11 +502,14 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		regs->srgr2	|= FPER(framesize - 1);
 		regs->srgr1	|= FWID((framesize >> 1) - 1);
 		break;
+	case SND_SOC_DAIFMT_TDM32_I2S:
+		framesize = 32*channels;
 	case SND_SOC_DAIFMT_DSP_A:
 	case SND_SOC_DAIFMT_DSP_B:
 		regs->srgr2	|= FPER(framesize - 1);
 		regs->srgr1	|= FWID(0);
 		break;
+
 	}
 
 	omap_mcbsp_config(bus_id, &mcbsp_data->regs);
@@ -564,6 +576,13 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		/* Invert FS polarity configuration */
 		temp_fmt ^= SND_SOC_DAIFMT_NB_IF;
 		break;
+	case SND_SOC_DAIFMT_TDM32_I2S:
+		/* 1-bit data delay */
+		regs->rcr2	|= RDATDLY(0);
+		regs->xcr2	|= XDATDLY(0);
+		regs->spcr1	|= RJUST(2);
+		break;
+
 	default:
 		/* Unsupported data format */
 		return -EINVAL;

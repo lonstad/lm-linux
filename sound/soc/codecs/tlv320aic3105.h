@@ -271,11 +271,9 @@ void aic3105_set_headset_detection(struct snd_soc_codec *codec, int detect,
 int aic3105_headset_detected(struct snd_soc_codec *codec);
 int aic3105_button_pressed(struct snd_soc_codec *codec);
 
-struct aic3105_setup_data {
-	unsigned int gpio_func[2];
-};
 
-extern struct snd_soc_dai aic3105_dai;
-extern struct snd_soc_codec_device soc_codec_dev_aic3105;
+
+extern struct snd_soc_dai_driver aic3105_dai;
+extern struct snd_soc_codec_driver soc_codec_dev_aic3105;
 
 #endif /* _AIC3105_H */
