@@ -171,9 +171,8 @@ struct mmc_host {
 						/* DDR mode at 1.8V */
 #define MMC_CAP_1_2V_DDR	(1 << 12)	/* can support */
 						/* DDR mode at 1.2V */
-#define MMC_CAP_POWER_OFF_CARD	(1 << 13)	/* Can power off after boot */
+#define MMC_CAP_RUNTIME_PM (1 << 13)	/* Explicit support for runtime PM */
 #define MMC_CAP_BUS_WIDTH_TEST	(1 << 14)	/* CMD14/CMD19 bus width ok */
-
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 #ifdef CONFIG_MMC_CLKGATE
