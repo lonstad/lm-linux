@@ -59,10 +59,10 @@ err0:
 static void rc_panel_power_off(struct omap_dss_device *dssdev)
 {
 	if (dssdev && dssdev->platform_disable)
-	{
 		dssdev->platform_disable(dssdev);
-		//omapdss_dpi_display_disable(dssdev);
-	}
+
+	if ( !dssdev->state == OMAP_DSS_DISPLAY_DISABLED )
+		omapdss_dpi_display_disable(dssdev);
 
 }
 
