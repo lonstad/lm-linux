@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
+#include <linux/regulator/fixed.h>
 #include <linux/mmc/host.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -82,6 +83,8 @@
 #define GPIO_PWR_BTN 31
 
 
+static int rc_twl_gpio_setup(struct device *dev,
+		unsigned gpio, unsigned ngpio);
 /***********************************************************************
  *
  * 	Utilities
@@ -323,10 +326,6 @@ static struct platform_device rc_dss_device = {
 };
 
 
-static struct regulator_consumer_supply rc_vdvi_supplies[] =
-{
-	REGULATOR_SUPPLY("vdds_dsi", "omapdss"),
-};
 
 /*****************************************************************
  *
@@ -354,12 +353,13 @@ static struct platform_device rc_backlight_device = {
 static struct omap2_hsmmc_info mmc[] = {
 	{
 		.mmc		= 1,
-		.caps		= MMC_CAP_4_BIT_DATA,
+		.caps		= MMC_CAP_4_BIT_DATA ,
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 	},
 	{
 		.mmc		= 2,
+		//.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_RUNTIME_PM,
 		.caps		= MMC_CAP_4_BIT_DATA,
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
@@ -369,14 +369,25 @@ static struct omap2_hsmmc_info mmc[] = {
 	{}	/* Terminator */
 };
 
+
+/**************************************************************************************
+ *
+ * 	Regulators in TPS65930
+ */
 static struct regulator_consumer_supply rc_vmmc1_supply = {
 	.supply			= "vmmc",
 };
 
+static struct regulator_consumer_supply rc_vdvi_supplies[] =
+{
+	REGULATOR_SUPPLY("vdds_dsi", "omapdss"),
+};
+
+
 /* VPLL2 for digital video outputs */
-static struct regulator_init_data rc_vpll2 = {
+static struct regulator_init_data rc_vpll1 = {
 	.constraints = {
-		//.name			= "VDVI",
+		.name			= "VPLL1",
 		.min_uV			= 1800000,
 		.max_uV			= 1800000,
 		.valid_modes_mask = REGULATOR_MODE_NORMAL | REGULATOR_MODE_STANDBY,
@@ -386,15 +397,7 @@ static struct regulator_init_data rc_vpll2 = {
 	.consumer_supplies	= rc_vdvi_supplies,
 };
 
-static int rc_twl_gpio_setup(struct device *dev,
-		unsigned gpio, unsigned ngpio)
-{
-	omap2_hsmmc_init(mmc);
 
-	rc_vmmc1_supply.dev = mmc[0].dev;
-
-	return 0;
-}
 
 static struct twl4030_gpio_platform_data rc_gpio_data = {
 	.gpio_base	= OMAP_MAX_GPIO_LINES,
@@ -439,8 +442,62 @@ static struct twl4030_platform_data rc_twldata = {
 	.usb		= &rc_usb_data,
 	.codec		= &rc_codec_data,
 	.vmmc1		= &rc_vmmc1,
-	.vpll2		= &rc_vpll2,
+	.vpll1		= &rc_vpll1,
 };
+
+/********************************************************************
+ *
+ * 	Other consumer/supplies
+ */
+
+static struct regulator_consumer_supply rc_additional_cons[] = {
+	{
+		.supply = "vcc",
+	},
+};
+
+static struct regulator_init_data vcc_reg_data = {
+	.constraints = {
+		.min_uV = 3300000,
+		.max_uV = 3300000,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+	},
+	.num_consumer_supplies = ARRAY_SIZE(rc_additional_cons),
+	.consumer_supplies = rc_additional_cons,
+};
+
+static struct fixed_voltage_config vcc33_config = {
+	.supply_name = "VCC33",
+	.microvolts = 3300000,
+	.enabled_at_boot = 1,
+	.enable_high = 1,
+	.gpio = GPIO_3V_PWREN,
+	.init_data = &vcc_reg_data,
+};
+
+static struct platform_device regulator_devices[] = {
+	{
+		.name = "reg-fixed-voltage",
+		.id = 1,
+		.dev = {
+			.platform_data = &vcc33_config,
+
+		},
+	},
+};
+
+
+
+static int rc_twl_gpio_setup(struct device *dev,
+		unsigned gpio, unsigned ngpio)
+{
+	omap2_hsmmc_init(mmc);
+
+	rc_vmmc1_supply.dev = mmc[0].dev;
+	rc_additional_cons[0].dev = mmc[1].dev;
+
+	return 0;
+}
 
 /*
 static struct cyttsp_platform_data rc_truetouch_pdata = {
@@ -564,7 +621,7 @@ static void __init rc_init(void)
 	config_gpio_in(GPIO_KEY2, OMAP_PIN_INPUT, "GPIO_KEY2");
 	config_gpio_in(GPIO_PWR_BTN, OMAP_PIN_INPUT, "GPIO_PWR_BTN");
 	config_gpio_in(RC_WLAN_NPD, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NPD");
-	config_gpio_out(GPIO_3V_PWREN, OMAP_PIN_OUTPUT, "gpio_3v_pwren", 1);
+	//config_gpio_out(GPIO_3V_PWREN, OMAP_PIN_OUTPUT, "gpio_3v_pwren", 1);
 	config_gpio_out(GPIO_BST5V_PWREN, OMAP_PIN_OUTPUT, "GPIO_BST5V_PWREN", 1);
 	config_gpio_out(RC_GPIO_W2W_NRESET, OMAP_PIN_OUTPUT, "RC_GPIO_W2W_NRESET", 0);
 	config_gpio_out(GPIO_LED_PWRENB, OMAP_PIN_OUTPUT, "GPIO_LED_PWRENB", 0);
@@ -582,6 +639,7 @@ static void __init rc_init(void)
 	config_gpio_in(GPIO_OTG_OC, OMAP_PIN_INPUT, "GPIO_OTG_OC");
 	gpio_set_value(RC_GPIO_W2W_NRESET, 1);
 	rc_i2c_init();
+	platform_device_register(&regulator_devices[0]);
 	platform_add_devices(rc_devices, ARRAY_SIZE(rc_devices));
 	omap_serial_init();
 	rc_flash_init();
