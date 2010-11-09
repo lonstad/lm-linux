@@ -58,12 +58,16 @@ err0:
 
 static void rc_panel_power_off(struct omap_dss_device *dssdev)
 {
-	if (dssdev && dssdev->platform_disable)
+	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
+		return;
+
+	if (dssdev->platform_disable)
 		dssdev->platform_disable(dssdev);
 
-	if ( !dssdev->state == OMAP_DSS_DISPLAY_DISABLED )
-		omapdss_dpi_display_disable(dssdev);
+	/* wait at least 5 vsyncs after disabling the LCD */
+	msleep(100);
 
+	omapdss_dpi_display_disable(dssdev);
 }
 
 static int rc_panel_probe(struct omap_dss_device *dssdev)
