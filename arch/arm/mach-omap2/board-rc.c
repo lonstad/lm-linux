@@ -60,7 +60,7 @@
 
 #define RC_WLAN_NWAKEUP 173
 #define RC_WLAN_NPD		174
-#define RC_WLAN_PWREN	159
+#define GPIO_WLAN_PWREN	159
 
 #define RC_LCD_LR	171
 #define RC_LCD_UD	172
@@ -454,6 +454,9 @@ static struct regulator_consumer_supply rc_additional_cons[] = {
 	{
 		.supply = "vcc",
 	},
+	{
+		.supply = "vcc_wlan",
+	}
 };
 
 static struct regulator_init_data vcc_reg_data = {
@@ -462,8 +465,8 @@ static struct regulator_init_data vcc_reg_data = {
 		.max_uV = 3300000,
 		.valid_modes_mask = REGULATOR_MODE_NORMAL,
 	},
-	.num_consumer_supplies = ARRAY_SIZE(rc_additional_cons),
-	.consumer_supplies = rc_additional_cons,
+	.num_consumer_supplies = 1,
+	.consumer_supplies = &rc_additional_cons[0],
 };
 
 static struct fixed_voltage_config vcc33_config = {
@@ -475,6 +478,27 @@ static struct fixed_voltage_config vcc33_config = {
 	.init_data = &vcc_reg_data,
 };
 
+static struct regulator_init_data vcc_wlan_reg_data = {
+	.supply_regulator = "VCC33",
+	.constraints = {
+		.min_uV = 3300000,
+		.max_uV = 3300000,
+		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+	},
+	.num_consumer_supplies = 1,
+	.consumer_supplies = &rc_additional_cons[1],
+};
+
+static struct fixed_voltage_config vcc_wlan_config = {
+	.supply_name = "VCC_WLAN",
+	.microvolts = 3300000,
+	.enabled_at_boot = 0,
+	.enable_high = 1,
+	.gpio = GPIO_WLAN_PWREN,
+	.init_data = &vcc_wlan_reg_data,
+};
+
+
 static struct platform_device regulator_devices[] = {
 	{
 		.name = "reg-fixed-voltage",
@@ -482,6 +506,13 @@ static struct platform_device regulator_devices[] = {
 		.dev = {
 			.platform_data = &vcc33_config,
 
+		},
+	},
+	{
+		.name = "reg-fixed-voltage",
+		.id = 2,
+		.dev = {
+			.platform_data = &vcc_wlan_config,
 		},
 	},
 };
@@ -494,7 +525,7 @@ static int rc_twl_gpio_setup(struct device *dev,
 	omap2_hsmmc_init(mmc);
 
 	rc_vmmc1_supply.dev = mmc[0].dev;
-	rc_additional_cons[0].dev = mmc[1].dev;
+	rc_additional_cons[1].dev = mmc[1].dev;
 
 	return 0;
 }
@@ -623,13 +654,13 @@ static void __init rc_init(void)
 	config_gpio_in(RC_WLAN_NPD, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NPD");
 	//config_gpio_out(GPIO_3V_PWREN, OMAP_PIN_OUTPUT, "gpio_3v_pwren", 1);
 	config_gpio_out(GPIO_BST5V_PWREN, OMAP_PIN_OUTPUT, "GPIO_BST5V_PWREN", 1);
-	config_gpio_out(RC_GPIO_W2W_NRESET, OMAP_PIN_OUTPUT, "RC_GPIO_W2W_NRESET", 0);
+
 	config_gpio_out(GPIO_LED_PWRENB, OMAP_PIN_OUTPUT, "GPIO_LED_PWRENB", 0);
 	config_gpio_out(GPIO_LCD_PWRENB, OMAP_PIN_OUTPUT, "GPIO_LCD_PWRENB", 0);
 	//config_gpio_out(GPIO_BACKL_ADJ, OMAP_PIN_OUTPUT, "GPIO_BACKL_ADJ", 1);
 	config_gpio_out(GPIO_AMP_SDN, OMAP_PIN_OUTPUT, "GPIO_AMP_SDN", 1);
 	udelay(200);
-	config_gpio_out(RC_WLAN_PWREN, OMAP_PIN_OUTPUT, "RC_WLAN_PWREN", 0);
+	//config_gpio_out(RC_WLAN_PWREN, OMAP_PIN_OUTPUT, "RC_WLAN_PWREN", 0);
 	udelay(600);
 	config_gpio_out(RC_TOUCH_PWREN, OMAP_PIN_OUTPUT, "RC_TOUCH_PWREN", 1);
 	config_gpio_out(GPIO_PHY_PWREN, OMAP_PIN_OUTPUT, "GPIO_PHY_PWREN", 1);
@@ -637,9 +668,13 @@ static void __init rc_init(void)
 
 	config_gpio_out(GPIO_OTG5V_EN, OMAP_PIN_OUTPUT, "GPIO_OTG5V_EN", 0);
 	config_gpio_in(GPIO_OTG_OC, OMAP_PIN_INPUT, "GPIO_OTG_OC");
-	gpio_set_value(RC_GPIO_W2W_NRESET, 1);
+
 	rc_i2c_init();
 	platform_device_register(&regulator_devices[0]);
+	platform_device_register(&regulator_devices[1]);
+	config_gpio_out(RC_GPIO_W2W_NRESET, OMAP_PIN_OUTPUT, "RC_GPIO_W2W_NRESET", 0);
+	mdelay(2);
+	gpio_set_value(RC_GPIO_W2W_NRESET, 1);
 	platform_add_devices(rc_devices, ARRAY_SIZE(rc_devices));
 	omap_serial_init();
 	rc_flash_init();
