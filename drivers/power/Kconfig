@@ -182,6 +182,10 @@ config BATTERY_INTEL_MID
 	  Say Y here to enable the battery driver on Intel MID
 	  platforms.
 
+config BATTERY_RC
+	tristate "Battery driver for LAerdal RC"
+	depends on I2C && MACH_RC
+	
 config CHARGER_ISP1704
 	tristate "ISP1704 USB Charger Detection"
 	depends on USB_OTG_UTILS
