@@ -231,7 +231,7 @@ obj-$(CONFIG_MACH_TI8168EVM)		+= board-ti8168evm.o
 usbfs-$(CONFIG_ARCH_OMAP_OTG)		:= usb-fs.o
 obj-y					+= $(usbfs-m) $(usbfs-y)
 ifeq ($(CONFIG_ARCH_AM35XX), y)
-  obj-y					+= usb-musb-am35xx.o
+  obj-y					+= usb-musb.o
 else
 obj-y					+= usb-musb.o
 endif
@@ -248,4 +248,6 @@ smc91x-$(CONFIG_SMC91X)			:= gpmc-smc91x.o
 obj-y					+= $(smc91x-m) $(smc91x-y)
 
 
+#CFLAGS_REMOVE_pm34xx.o = -Os
+CFLAGS_REMOVE_pm.o = -Os
 
