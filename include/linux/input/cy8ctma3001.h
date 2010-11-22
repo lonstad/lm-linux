@@ -77,6 +77,8 @@ struct cy8_platform_data {
   u32 maxx;
   u32 maxy;
   u32 flags;
+  int gpio_on;
+  bool gpio_on_pol;
 };
 
 #endif 
