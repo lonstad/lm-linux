@@ -144,7 +144,9 @@ void cy8_xy_worker(struct work_struct *work) {
 		ts->prev_touch = 1;
 		input_report_abs(ts->input, ABS_X, xy_data.x);
 		input_report_abs(ts->input, ABS_Y, xy_data.y);
+#ifdef REPORT_PRESSURE
 		input_report_abs(ts->input, ABS_PRESSURE, xy_data.z);
+#endif
 		if (IS_LARGE_AREA(xy_data.stat) == 1)
 			input_report_abs(ts->input, ABS_TOOL_WIDTH, 255);
 		else
@@ -217,7 +219,9 @@ static int cy8_initialize(struct i2c_client *client, struct cy8 *ts) {
 	set_bit(EV_SYN, input_device->evbit);
 	set_bit(ABS_X, input_device->absbit);
 	set_bit(ABS_Y, input_device->absbit);
+#ifdef REPORT_PRESSURE
 	set_bit(ABS_PRESSURE, input_device->absbit);
+#endif
 	set_bit(BTN_TOUCH, input_device->keybit);
 	set_bit(EV_KEY, input_device->evbit);
 	set_bit(EV_ABS, input_device->evbit);
@@ -225,8 +229,9 @@ static int cy8_initialize(struct i2c_client *client, struct cy8 *ts) {
 	input_set_abs_params(input_device, ABS_X, 0, ts->platform_data->maxx, 0, 0);
 	input_set_abs_params(input_device, ABS_Y, 0, ts->platform_data->maxy, 0, 0);
 	input_set_abs_params(input_device, ABS_TOOL_WIDTH, 0, 255, 0, 0);
+#ifdef REPORT_PRESSURE
 	input_set_abs_params(input_device, ABS_PRESSURE, 0, 255, 0, 0);
-
+#endif
 	/* Report MAXX MAXY here */
 
 	error = input_register_device(input_device);
@@ -284,15 +289,18 @@ static int cy8_initialize(struct i2c_client *client, struct cy8 *ts) {
 
 /* Function to manage power-on resume (still to be implemented in full) */
 static int cy8_resume(struct i2c_client *client) {
-	/* dev_get_drvdata + device enable */
-	printk(KERN_ALERT "cy8_resume\n");
+	struct cy8 *ts = i2c_get_clientdata(client);
+	if ( ts->platform_data->gpio_on > 0 )
+		gpio_set_value(ts->platform_data->gpio_on, ts->platform_data->gpio_on_pol ? 0 : 1);
 	return 0;
 }
 
 /* Function to manage power-off suspend (still to be implemented in full) */
 static int cy8_suspend(struct i2c_client *client, pm_message_t message) {
-	/* Dummy function for now. We need to do more... */
-	printk(KERN_ALERT "cy8_suspend\n");
+
+	struct cy8 *ts = i2c_get_clientdata(client);
+	if ( ts->platform_data->gpio_on > 0 )
+		gpio_set_value(ts->platform_data->gpio_on, ts->platform_data->gpio_on_pol ? 1 : 0);
 	return 0;
 }
 
@@ -314,6 +322,12 @@ static int __devinit cy8_probe(struct i2c_client *client,
 	ts->client = client;
 	ts->platform_data = client->dev.platform_data;
 	i2c_set_clientdata(client, ts);
+
+	/* Alloc opt power on gpio */
+	if ( ts->platform_data->gpio_on > 0 ) {
+		gpio_request(ts->platform_data->gpio_on, "cy8c_pwr");
+		gpio_direction_output(ts->platform_data->gpio_on, ts->platform_data->gpio_on_pol ? 1 : 0);
+	}
 
 	/* bus-independent initialization of cy8ctma300 below */
 	error = cy8_initialize(client, ts);

@@ -205,6 +205,7 @@ static inline void rc_init_smsc911x(void)
 	platform_add_devices(smsc911x_devices, ARRAY_SIZE(smsc911x_devices));
 }
 
+#ifdef SUPPORT_NAND
 /****************************************************************************
  *
  * 	Flash
@@ -278,6 +279,7 @@ static void __init rc_flash_init(void)
 	}
 }
 
+#endif
 /******************************************************************
  *
  * 	DSS
@@ -543,9 +545,9 @@ static struct cyttsp_platform_data rc_truetouch_pdata = {
 };
 */
 static struct cy8_platform_data tc_single_data = {
-	.maxx = 1023,
-	.maxy = 767,
-	.flags = CY8F_REVERSE_X | CY8F_REVERSE_Y,
+	.maxx = 767,
+	.maxy = 1023,
+	.flags =  CY8F_REVERSE_Y | CY8F_XY_AXIS_FLIPPED,
 };
 static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 	{
@@ -564,9 +566,12 @@ static struct i2c_board_info __initdata rc_i2c2_boardinfo[] = {
 		//.platform_data = &rc_truetouch_pdata,
 		.platform_data = &tc_single_data,
 	},
+	/*	Not ready for proto 1
 	{
-		I2C_BOARD_INFO("MCU", 0x34),
+		I2C_BOARD_INFO("rc-bat1", 0x34),
+		.type = "rc-battery",
 	},
+	*/
 };
 
 static struct i2c_board_info __initdata rc_i2c3_boardinfo[] = {
@@ -639,7 +644,7 @@ static struct omap_board_mux board_mux[] __initdata = {
 
 static struct omap_musb_board_data musb_board_data = {
 	.interface_type		= MUSB_INTERFACE_ULPI,
-	.mode			= MUSB_PERIPHERAL,
+	.mode			= MUSB_OTG,
 	.power			= 100,
 	.extvbus	 	= 1,
 };
@@ -677,7 +682,9 @@ static void __init rc_init(void)
 	gpio_set_value(RC_GPIO_W2W_NRESET, 1);
 	platform_add_devices(rc_devices, ARRAY_SIZE(rc_devices));
 	omap_serial_init();
+#ifdef SUPPORT_NAND
 	rc_flash_init();
+#endif
 	usb_musb_init(&musb_board_data);
 	//usb_ehci_init(&rc_ehci_pdata);
 	rc_init_smsc911x();
