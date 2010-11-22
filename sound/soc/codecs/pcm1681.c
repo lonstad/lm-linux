@@ -55,7 +55,7 @@ static const u8 pcm1681_reg[PCM1681_CACHEREGNUM] = {
 	0xff, //ATT6
 	0x00, //MUTE
 	0x00, //DAC
-	0x05, //IFACE
+	0x07, //IFACE
 	0x00, //APDIGI
 	0xff, //PHASEO
 	0x0f, //FLTRO
@@ -151,8 +151,9 @@ static inline void pcm1681_write_reg_cache(struct snd_soc_codec *codec,
 static int pcm1681_write(struct snd_soc_codec *codec, unsigned int reg,
 		       unsigned int value)
 {
+	int ret;
 	u8 data[2];
-
+	struct i2c_client *client = codec->control_data;
 	/* data is
 	 *   D15..D8 pcm1681 register offset
 	 *   D7...D0 register data
@@ -160,30 +161,46 @@ static int pcm1681_write(struct snd_soc_codec *codec, unsigned int reg,
 	data[0] = reg & 0x7f;
 	data[1] = value & 0xff;
 
+	ret = i2c_master_send(client, data, 2);
+#if 0
 	pcm1681_write_reg_cache(codec, data[0], data[1]);
 	if (codec->hw_write(codec->control_data, data, 2) == 2)
 		return 0;
 	else
 		return -EIO;
+#endif
+	return ret;
 }
 
 /*
  * read from the pcm1681 register space
  */
-static int pcm1681_read(struct snd_soc_codec *codec, unsigned int reg,
-		      u8 *value)
+static unsigned int pcm1681_read(struct snd_soc_codec *codec, unsigned int reg)
 {
-	u8 *cache = codec->reg_cache;
+	int ret;
+	//u8 *cache = codec->reg_cache;
+	struct i2c_client *client = codec->control_data;
+	struct i2c_adapter *adap = client->adapter;
+	struct i2c_msg msg[2];
 
-	if (codec->cache_only)
-		return -EINVAL;
-	if (reg >= PCM1681_CACHEREGNUM)
-		return -1;
+	u8 buf[2];
+	u8 ret_buf[2];
+	buf[0] = reg;
+	msg[0].addr = client->addr;
+	msg[0].flags = client->flags;
+	msg[0].len = 1;
+	msg[0].buf = (char *)buf;
+	msg[1].addr = client->addr;
+	msg[1].flags = client->flags | I2C_M_RD;
+	msg[1].len = 1;
+	msg[1].buf = ret_buf;
 
-	*value = codec->hw_read(codec, reg);
-	cache[reg] = *value;
 
-	return 0;
+	ret = i2c_transfer(adap, msg, 2);
+	return msg[1].buf[0];
+
+	//pcm1681_write_reg_cache(codec, reg, *value);
+
 }
 
 static int pcm1681_add_widgets(struct snd_soc_codec *codec)
@@ -235,10 +252,17 @@ static void pcm1681_shutdown(struct snd_pcm_substream *substream,
 
 static int pcm1681_mute(struct snd_soc_dai *dai, int mute)
 {
+	int n;
+	u8 val;
 	struct snd_soc_codec *codec = dai->codec;
 
-	if (mute)
+	if (mute) {
+		for (n=0; n < 15; n++ )	{
+			val = pcm1681_read(codec, n);
+			printk(KERN_INFO "pcm1681 reg %d = 0x%2x\n", n, val);
+		}
 		snd_soc_write(codec, PCM1681_MUTE, 0xff);
+	}
 	else
 		snd_soc_write(codec, PCM1681_MUTE, 0);
 	return 0;
@@ -413,12 +437,14 @@ static int pcm1681_probe(struct snd_soc_codec *codec)
 	codec->control_data = pcm1681->control_data;
 	pcm1681->codec = codec;
 	codec->idle_bias_off = 1;
+#if 0
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, pcm1681->control_type);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
 		return ret;
 	}
 
+#endif
 
 
 	for (i = 0; i < ARRAY_SIZE(pcm1681->supplies); i++)
@@ -443,7 +469,7 @@ static int pcm1681_probe(struct snd_soc_codec *codec)
 		}
 	}
 
-	codec->cache_only = 1;
+	codec->cache_only = 0;
 	snd_soc_add_controls(codec, pcm1681_snd_controls,
 				 ARRAY_SIZE(pcm1681_snd_controls));
 
@@ -487,6 +513,8 @@ struct snd_soc_codec_driver soc_codec_dev_pcm1681 = {
 	.remove = 	pcm1681_remove,
 	.suspend = 	pcm1681_suspend,
 	.resume =	pcm1681_resume,
+	.read = pcm1681_read,
+	.write = pcm1681_write,
 };
 EXPORT_SYMBOL_GPL(soc_codec_dev_pcm1681);
 
