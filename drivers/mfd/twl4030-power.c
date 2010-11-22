@@ -323,6 +323,30 @@ out:
 	return err;
 }
 
+void twl_poweroff(void)
+{
+	int err;
+	u8 val;
+
+	err = twl_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &val,
+	  PWR_P1_SW_EVENTS);
+	if (err) {
+	 pr_err("%s: i2c error %d while reading TWL4030"
+	 "PM_MASTER P1_SW_EVENTS\n",
+	 "twl4030_power", err);
+	 return;
+	}
+
+	val |= PWR_DEVOFF;
+
+	err = twl_i2c_write_u8(TWL4030_MODULE_PM_MASTER, val,
+	   PWR_P1_SW_EVENTS);
+	if (err)
+	 pr_err("%s: i2c error %d while writing TWL4030"
+	 "PM_MASTER P1_SW_EVENTS\n",
+	 "twl4030_power", err);
+}
+
 static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 {
 	int rconfig_addr;

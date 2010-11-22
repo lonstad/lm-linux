@@ -55,6 +55,7 @@
  * FIXME this driver currently requires use of the first interrupt line
  * (and associated registers).
  */
+void twl_poweroff(void);
 
 #define DRIVER_NAME			"twl"
 
@@ -1002,6 +1003,7 @@ static int twl_remove(struct i2c_client *client)
 	return 0;
 }
 
+
 /* NOTE:  this driver only handles a single twl4030/tps659x0 chip */
 static int __devinit
 twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -1088,7 +1090,7 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		I2C_SDA_CTRL_PU | I2C_SCL_CTRL_PU);
 		twl_i2c_write_u8(TWL4030_MODULE_INTBR, temp, REG_GPPUPDCTR1);
 	}
-
+	pm_power_off = twl_poweroff;
 	status = add_children(pdata, id->driver_data);
 fail:
 	if (status < 0)
