@@ -768,7 +768,8 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 	 */
 	uart->regshift = p->regshift;
 	uart->membase = p->membase;
-	if (cpu_is_omap44xx() || cpu_is_ti816x())
+#ifndef CONFIG_ARCH_AM35XX
+        if (cpu_is_omap44xx())
 		uart->errata |= UART_ERRATA_FIFO_FULL_ABORT;
 	else if ((serial_read_reg(uart, UART_OMAP_MVER) & 0xFF)
 			>= UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV)
@@ -778,7 +779,7 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 		p->serial_in = serial_in_override;
 		p->serial_out = serial_out_override;
 	}
-
+#endif
 	pdata = &ports[0];
 	pdata_size = 2 * sizeof(struct plat_serial8250_port);
 #else
@@ -815,7 +816,7 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 
 	oh->dev_attr = uart;
 
-	console_lock(); /* in case the earlycon is on the UART */
+	acquire_console_sem(); /* in case the earlycon is on the UART */
 
 	/*
 	 * Because of early UART probing, UART did not get idled
@@ -841,7 +842,7 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 	omap_uart_block_sleep(uart);
 	uart->timeout = DEFAULT_TIMEOUT;
 
-	console_unlock();
+	release_console_sem();
 
 	if ((cpu_is_omap34xx() && uart->padconf) ||
 	    (uart->wk_en && uart->wk_mask)) {
@@ -850,7 +851,7 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 	}
 
 	/* Enable the MDR1 errata for OMAP3 */
-	if (cpu_is_omap34xx() && !cpu_is_ti816x())
+	if (cpu_is_omap34xx())
 		uart->errata |= UART_ERRATA_i202_MDR1_ACCESS;
 }
 

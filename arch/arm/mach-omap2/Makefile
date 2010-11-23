@@ -129,7 +129,11 @@ obj-$(CONFIG_SOC_OMAP2430)		+= opp2430_data.o
 # hwmod data
 obj-$(CONFIG_SOC_OMAP2420)		+= omap_hwmod_2420_data.o
 obj-$(CONFIG_SOC_OMAP2430)		+= omap_hwmod_2430_data.o
+ifeq ($(CONFIG_ARCH_AM35XX),y)
+obj-$(CONFIG_ARCH_OMAP3)		+= omap_hwmod_am35xx_data.o
+else
 obj-$(CONFIG_ARCH_OMAP3)		+= omap_hwmod_3xxx_data.o
+endif
 obj-$(CONFIG_ARCH_OMAP4)		+= omap_hwmod_44xx_data.o
 
 # EMU peripherals
@@ -231,7 +235,7 @@ obj-$(CONFIG_MACH_TI8168EVM)		+= board-ti8168evm.o
 usbfs-$(CONFIG_ARCH_OMAP_OTG)		:= usb-fs.o
 obj-y					+= $(usbfs-m) $(usbfs-y)
 ifeq ($(CONFIG_ARCH_AM35XX), y)
-  obj-y					+= usb-musb.o
+  obj-y					+= usb-musb-am35xx.o
 else
 obj-y					+= usb-musb.o
 endif
@@ -250,4 +254,8 @@ obj-y					+= $(smc91x-m) $(smc91x-y)
 
 #CFLAGS_REMOVE_pm34xx.o = -Os
 CFLAGS_REMOVE_pm.o = -Os
+CFLAGS_REMOVE_omap_hwmod_am35xx_data.o = -Os
+CFLAGS_REMOVE_omap_hwmod.o = -Os
+CFLAGS_REMOVE_serial.o = -Os
+
 

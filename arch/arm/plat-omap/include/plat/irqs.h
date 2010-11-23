@@ -358,6 +358,7 @@
 #define INT_35XX_CCDC_VD0_IRQ		88
 #define INT_35XX_CCDC_VD1_IRQ		92
 #define INT_35XX_CCDC_VD2_IRQ		93
+#define INT_35XX_UART4_IRQ	84
 
 /* Max. 128 level 2 IRQs (OMAP1610), 192 GPIOs (OMAP730/850) and
  * 16 MPUIO lines */

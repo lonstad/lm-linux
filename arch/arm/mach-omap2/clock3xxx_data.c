@@ -3184,6 +3184,17 @@ static struct clk vpfe_fck = {
  * The UART1/2 functional clock acts as the functional
  * clock for UART4. No separate fclk control available.
  */
+
+static struct clk uart4_fck_am35xx = {
+	.name		= "uart4_fck",
+	.ops		= &clkops_omap2_dflt_wait,
+	.parent		= &core_48m_fck,
+	.enable_reg	= OMAP_CM_REGADDR(CORE_MOD, CM_FCLKEN1),
+	.enable_bit	= AM35XX_EN_UART4_SHIFT,
+	.clkdm_name	= "core_clkdm",
+	.recalc		= &followparent_recalc,
+};
+
 static struct clk uart4_ick_am35xx = {
 	.name		= "uart4_ick",
 	.ops		= &clkops_omap2_dflt_wait,
@@ -3454,6 +3465,7 @@ static struct omap_clk omap3xxx_clks[] = {
 	CLK("musb-am35x",	"fck",		&hsotgusb_fck_am35xx,	CK_AM35XX),
 	CLK(NULL,	"hecc_ck",	&hecc_ck,	CK_AM35XX),
 	CLK(NULL,	"uart4_ick",	&uart4_ick_am35xx,	CK_AM35XX),
+	CLK(NULL,	"uart4_fck",	&uart4_fck_am35xx,	CK_AM35XX),
 };
 
 
