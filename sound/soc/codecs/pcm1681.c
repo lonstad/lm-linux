@@ -18,8 +18,7 @@
 
 #include "pcm1681.h"
 
-static struct snd_soc_codec *pcm1681_codec;
-//struct snd_soc_codec_device soc_codec_dev_pcm1681;
+
 #define PCM1681_NUM_SUPPLIES 3
 static const char *pcm1681_supply_names[PCM1681_NUM_SUPPLIES] = {
 	"VDD",
@@ -252,17 +251,10 @@ static void pcm1681_shutdown(struct snd_pcm_substream *substream,
 
 static int pcm1681_mute(struct snd_soc_dai *dai, int mute)
 {
-	int n;
-	u8 val;
 	struct snd_soc_codec *codec = dai->codec;
 
-	if (mute) {
-		for (n=0; n < 15; n++ )	{
-			val = pcm1681_read(codec, n);
-			printk(KERN_INFO "pcm1681 reg %d = 0x%2x\n", n, val);
-		}
+	if (mute)
 		snd_soc_write(codec, PCM1681_MUTE, 0xff);
-	}
 	else
 		snd_soc_write(codec, PCM1681_MUTE, 0);
 	return 0;
@@ -446,6 +438,7 @@ static int pcm1681_probe(struct snd_soc_codec *codec)
 
 #endif
 
+	snd_soc_write(codec, PCM1681_MUTE, 0xff);
 
 	for (i = 0; i < ARRAY_SIZE(pcm1681->supplies); i++)
 		pcm1681->supplies[i].supply = pcm1681_supply_names[i];
