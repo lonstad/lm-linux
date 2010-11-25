@@ -1191,6 +1191,9 @@ config SENSORS_MC13783_ADC
         help
           Support for the A/D converter on MC13783 PMIC.
 
+config SENSORS_INA219
+	tristate "TI INA219 Power/Current sensor"
+
 if ACPI
 
 comment "ACPI drivers"
