@@ -11,7 +11,7 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/am35xx_emac.h>
 #include <linux/can/platform/ti_hecc.h>
-
+#include <linux/i2c/ina219_cal.h>
 #include <mach/hardware.h>
 #include <mach/am35xx.h>
 #include <asm/mach-types.h>
@@ -173,6 +173,18 @@ static struct i2c_board_info __initdata mcb_i2c2_boardinfo[] = {
 	},
 };
 
+static struct ina219_cal adapter_ina219_cal = {
+	.shunt_mohm = 10,
+	.max_current_mamp = 6000,
+	.vbus_max_mvolt = 12,
+};
+
+static struct ina219_cal system_ina219_cal = {
+	.shunt_mohm = 10,
+	.max_current_mamp = 6000,
+	.vbus_max_mvolt = 12,
+};
+
 static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("PSU", 0x98 >> 1),
@@ -187,12 +199,14 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 		.type = "ds2482",
 	},
 	{
-		I2C_BOARD_INFO("pwrmon_0", 0x80 >> 1),
+		I2C_BOARD_INFO("pwrmon_adapter", 0x80 >> 1),
 		.type = "ina219",
+		.platform_data = &adapter_ina219_cal,
 	},
 	{
-		I2C_BOARD_INFO("pwrmon_1", 0x82 >> 1),
+		I2C_BOARD_INFO("pwrmon_system", 0x82 >> 1),
 		.type = "ina219",
+		.platform_data = &system_ina219_cal,
 	},
 };
 
@@ -475,7 +489,7 @@ static struct resource mcb_emac_resources[] = {
 };
 
 static struct platform_device mcb_emac_device = {
-	.name           = "davinci_emac",
+	.name           = "am35xx_emac",
 	.id             = -1,
 	.num_resources  = ARRAY_SIZE(mcb_emac_resources),
 	.resource       = mcb_emac_resources,
@@ -636,9 +650,10 @@ static struct omap_musb_board_data musb_board_data = {
 
 static void __init mcb_init(void)
 {
-	mcb_init_power_off();
+
 
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
+	mcb_init_power_off();
 	mcb_export_gpio();
 	mcb_reset_all();
 	platform_add_devices(mcb_devices, ARRAY_SIZE(mcb_devices));
