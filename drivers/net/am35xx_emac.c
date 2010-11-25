@@ -1,7 +1,7 @@
 /*
- * DaVinci Ethernet Medium Access Controller
+ * AM35XX Ethernet Medium Access Controller
  *
- * DaVinci EMAC is based upon CPPI 3.0 TI DMA engine
+ * AM35XX EMAC is based upon CPPI 3.0 TI DMA engine
  *
  * Copyright (C) 2009 Texas Instruments.
  *
@@ -65,10 +65,10 @@
 
 static int debug_level;
 module_param(debug_level, int, 0);
-MODULE_PARM_DESC(debug_level, "DaVinci EMAC debug level (NETIF_MSG bits)");
+MODULE_PARM_DESC(debug_level, "AM35XX EMAC debug level (NETIF_MSG bits)");
 
 /* Netif debug messages possible */
-#define DAVINCI_EMAC_DEBUG	(NETIF_MSG_DRV | \
+#define AM35XX_EMAC_DEBUG	(NETIF_MSG_DRV | \
 				NETIF_MSG_PROBE | \
 				NETIF_MSG_LINK | \
 				NETIF_MSG_TIMER | \
@@ -89,7 +89,7 @@ MODULE_PARM_DESC(debug_level, "DaVinci EMAC debug level (NETIF_MSG bits)");
 #define EMAC_MINOR_VERSION	1
 #define EMAC_MODULE_VERSION	"6.1"
 MODULE_VERSION(EMAC_MODULE_VERSION);
-static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.1";
+static const char emac_version_string[] = "TI AM35XX EMAC Linux v6.1";
 
 /* Configuration items */
 #define EMAC_DEF_PASS_CRC		(0) /* Do not pass CRC upto frames */
@@ -554,7 +554,7 @@ static char *emac_rxhost_errcodes[16] = {
 
 /**
  * emac_dump_regs: Dump important EMAC registers to debug terminal
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  *
  * Executes ethtool set cmd & sets phy mode
  *
@@ -662,7 +662,7 @@ static void emac_dump_regs(struct emac_priv *priv)
  *************************************************************************/
 /**
  * emac_get_drvinfo: Get EMAC driver information
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  * @info: ethtool info structure containing name and version
  *
  * Returns EMAC driver information (name and version)
@@ -677,7 +677,7 @@ static void emac_get_drvinfo(struct net_device *ndev,
 
 /**
  * emac_get_settings: Get EMAC settings
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  * @ecmd: ethtool command
  *
  * Executes ethool get command
@@ -696,7 +696,7 @@ static int emac_get_settings(struct net_device *ndev,
 
 /**
  * emac_set_settings: Set EMAC settings
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  * @ecmd: ethtool command
  *
  * Executes ethool set command
@@ -714,7 +714,7 @@ static int emac_set_settings(struct net_device *ndev, struct ethtool_cmd *ecmd)
 
 /**
  * emac_get_coalesce : Get interrupt coalesce settings for this device
- * @ndev : The DaVinci EMAC network adapter
+ * @ndev : The AM35XX EMAC network adapter
  * @coal : ethtool coalesce settings structure
  *
  * Fetch the current interrupt coalesce settings
@@ -732,7 +732,7 @@ static int emac_get_coalesce(struct net_device *ndev,
 
 /**
  * emac_set_coalesce : Set interrupt coalesce settings for this device
- * @ndev : The DaVinci EMAC network adapter
+ * @ndev : The AM35XX EMAC network adapter
  * @coal : ethtool coalesce settings structure
  *
  * Set interrupt coalesce parameters
@@ -810,7 +810,7 @@ static int emac_set_coalesce(struct net_device *ndev,
 
 
 /**
- * ethtool_ops: DaVinci EMAC Ethtool structure
+ * ethtool_ops: AM35XX EMAC Ethtool structure
  *
  * Ethtool support for EMAC adapter
  *
@@ -826,7 +826,7 @@ static const struct ethtool_ops ethtool_ops = {
 
 /**
  * emac_update_phystatus: Update Phy status
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  *
  * Updates phy status and takes action for network queue if required
  * based upon link status
@@ -918,7 +918,7 @@ static u32 hash_get(u8 *addr)
 
 /**
  * hash_add: Hash function to add mac addr from hash table
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * mac_addr: mac address to delete from hash table
  *
  * Adds mac address to the internal hash table
@@ -933,7 +933,7 @@ static int hash_add(struct emac_priv *priv, u8 *mac_addr)
 
 	if (hash_value >= EMAC_NUM_MULTICAST_BITS) {
 		if (netif_msg_drv(priv)) {
-			dev_err(emac_dev, "DaVinci EMAC: hash_add(): Invalid "\
+			dev_err(emac_dev, "AM35XX EMAC: hash_add(): Invalid "\
 				"Hash %08x, should not be greater than %08x",
 				hash_value, (EMAC_NUM_MULTICAST_BITS - 1));
 		}
@@ -960,7 +960,7 @@ static int hash_add(struct emac_priv *priv, u8 *mac_addr)
 
 /**
  * hash_del: Hash function to delete mac addr from hash table
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * mac_addr: mac address to delete from hash table
  *
  * Removes mac address from the internal hash table
@@ -1002,7 +1002,7 @@ static int hash_del(struct emac_priv *priv, u8 *mac_addr)
 
 /**
  * emac_add_mcast: Set multicast address in the EMAC adapter (Internal)
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @action: multicast operation to perform
  * mac_addr: mac address to set
  *
@@ -1036,7 +1036,7 @@ static void emac_add_mcast(struct emac_priv *priv, u32 action, u8 *mac_addr)
 		break;
 	default:
 		if (netif_msg_drv(priv))
-			dev_err(emac_dev, "DaVinci EMAC: add_mcast"\
+			dev_err(emac_dev, "AM35XX EMAC: add_mcast"\
 				": bad operation %d", action);
 		break;
 	}
@@ -1050,7 +1050,7 @@ static void emac_add_mcast(struct emac_priv *priv, u32 action, u8 *mac_addr)
 
 /**
  * emac_dev_mcast_set: Set multicast address in the EMAC adapter
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Set multicast addresses in EMAC adapter
  *
@@ -1096,7 +1096,7 @@ static void emac_dev_mcast_set(struct net_device *ndev)
 
 /**
  * emac_int_disable: Disable EMAC module interrupt (from adapter)
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  *
  * Disable EMAC interrupt on the adapter
  *
@@ -1126,7 +1126,7 @@ static void emac_int_disable(struct emac_priv *priv)
 
 /**
  * emac_int_enable: Enable EMAC module interrupt (from adapter)
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  *
  * Enable EMAC interrupt on the adapter
  *
@@ -1200,7 +1200,7 @@ static irqreturn_t emac_irq(int irq, void *dev_id)
 
 /**
  * emac_init_txch: TX channel initialization
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  *
  * Called during device init to setup a TX channel (allocate buffer desc
@@ -1218,7 +1218,7 @@ static int emac_init_txch(struct emac_priv *priv, u32 ch)
 
 	txch = kzalloc(sizeof(struct emac_txch), GFP_KERNEL);
 	if (NULL == txch) {
-		dev_err(emac_dev, "DaVinci EMAC: TX Ch mem alloc failed");
+		dev_err(emac_dev, "AM35XX EMAC: TX Ch mem alloc failed");
 		return -ENOMEM;
 	}
 	priv->txch[ch] = txch;
@@ -1232,7 +1232,7 @@ static int emac_init_txch(struct emac_priv *priv, u32 ch)
 	txch->tx_complete = kzalloc(txch->service_max * sizeof(u32),
 				    GFP_KERNEL);
 	if (NULL == txch->tx_complete) {
-		dev_err(emac_dev, "DaVinci EMAC: Tx service mem alloc failed");
+		dev_err(emac_dev, "AM35XX EMAC: Tx service mem alloc failed");
 		kfree(txch);
 		return -ENOMEM;
 	}
@@ -1267,7 +1267,7 @@ static int emac_init_txch(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_cleanup_txch: Book-keep function to clean TX channel resources
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: TX channel number
  *
  * Called to clean up TX channel resources
@@ -1288,7 +1288,7 @@ static void emac_cleanup_txch(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_net_tx_complete: TX packet completion function
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @net_data_tokens: packet token - skb pointer
  * @num_tokens: number of skb's to free
  * @ch: TX channel number
@@ -1318,7 +1318,7 @@ static int emac_net_tx_complete(struct emac_priv *priv,
 
 /**
  * emac_txch_teardown: TX channel teardown
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: TX channel number
  *
  * Called to teardown TX channel
@@ -1366,7 +1366,7 @@ static void emac_txch_teardown(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_stop_txch: Stop TX channel operation
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: TX channel number
  *
  * Called to stop TX channel operation
@@ -1387,7 +1387,7 @@ static void emac_stop_txch(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_tx_bdproc: TX buffer descriptor (packet) processing
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: TX channel number to process buffer descriptors for
  * @budget: number of packets allowed to process
  * @pending: indication to caller that packets are pending to process
@@ -1412,7 +1412,7 @@ static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 
 	if (unlikely(1 == txch->teardown_pending)) {
 		if (netif_msg_tx_err(priv) && net_ratelimit()) {
-			dev_err(emac_dev, "DaVinci EMAC:emac_tx_bdproc: "\
+			dev_err(emac_dev, "AM35XX EMAC:emac_tx_bdproc: "\
 				"teardown pending\n");
 		}
 		return 0;  /* dont handle any pkt completions */
@@ -1474,7 +1474,7 @@ static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 
 /**
  * emac_send: EMAC Transmit function (internal)
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @pkt: packet pointer (contains skb ptr)
  * @ch: TX channel number
  *
@@ -1555,7 +1555,7 @@ static int emac_send(struct emac_priv *priv, struct emac_netpktobj *pkt, u32 ch)
 /**
  * emac_dev_xmit: EMAC Transmit function
  * @skb: SKB pointer
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Called by the system to transmit a packet  - we queue the packet in
  * EMAC hardware transmit queue
@@ -1573,7 +1573,7 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 	/* If no link, return */
 	if (unlikely(!priv->link)) {
 		if (netif_msg_tx_err(priv) && net_ratelimit())
-			dev_err(emac_dev, "DaVinci EMAC: No link to transmit");
+			dev_err(emac_dev, "AM35XX EMAC: No link to transmit");
 		return NETDEV_TX_BUSY;
 	}
 
@@ -1593,7 +1593,7 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 	if (unlikely(ret_code != 0)) {
 		if (ret_code == EMAC_ERR_TX_OUT_OF_BD) {
 			if (netif_msg_tx_err(priv) && net_ratelimit())
-				dev_err(emac_dev, "DaVinci EMAC: xmit() fatal"\
+				dev_err(emac_dev, "AM35XX EMAC: xmit() fatal"\
 					" err. Out of TX BD's");
 			netif_stop_queue(priv->ndev);
 		}
@@ -1606,7 +1606,7 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 
 /**
  * emac_dev_tx_timeout: EMAC Transmit timeout function
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Called when system detects that a skb timeout period has expired
  * potentially due to a fault in the adapter in not being able to send
@@ -1620,7 +1620,7 @@ static void emac_dev_tx_timeout(struct net_device *ndev)
 	struct device *emac_dev = &ndev->dev;
 
 	if (netif_msg_tx_err(priv))
-		dev_err(emac_dev, "DaVinci EMAC: xmit timeout, restarting TX");
+		dev_err(emac_dev, "AM35XX EMAC: xmit timeout, restarting TX");
 
 	ndev->stats.tx_errors++;
 	emac_int_disable(priv);
@@ -1634,7 +1634,7 @@ static void emac_dev_tx_timeout(struct net_device *ndev)
 
 /**
  * emac_net_alloc_rx_buf: Allocate a skb for RX
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @buf_size: size of SKB data buffer to allocate
  * @data_token: data token returned (skb handle for storing in buffer desc)
  * @ch: RX channel number
@@ -1654,7 +1654,7 @@ static void *emac_net_alloc_rx_buf(struct emac_priv *priv, int buf_size,
 	p_skb = dev_alloc_skb(buf_size);
 	if (unlikely(NULL == p_skb)) {
 		if (netif_msg_rx_err(priv) && net_ratelimit())
-			dev_err(emac_dev, "DaVinci EMAC: failed to alloc skb");
+			dev_err(emac_dev, "AM35XX EMAC: failed to alloc skb");
 		return NULL;
 	}
 
@@ -1667,7 +1667,7 @@ static void *emac_net_alloc_rx_buf(struct emac_priv *priv, int buf_size,
 
 /**
  * emac_init_rxch: RX channel initialization
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  * @param: mac address for RX channel
  *
@@ -1686,7 +1686,7 @@ static int emac_init_rxch(struct emac_priv *priv, u32 ch, char *param)
 
 	rxch = kzalloc(sizeof(struct emac_rxch), GFP_KERNEL);
 	if (NULL == rxch) {
-		dev_err(emac_dev, "DaVinci EMAC: RX Ch mem alloc failed");
+		dev_err(emac_dev, "AM35XX EMAC: RX Ch mem alloc failed");
 		return -ENOMEM;
 	}
 	priv->rxch[ch] = rxch;
@@ -1721,7 +1721,7 @@ static int emac_init_rxch(struct emac_priv *priv, u32 ch, char *param)
 				    (void __force **)&curr_bd->buf_token,
 				    EMAC_DEF_RX_CH);
 		if (curr_bd->data_ptr == NULL) {
-			dev_err(emac_dev, "DaVinci EMAC: RX buf mem alloc " \
+			dev_err(emac_dev, "AM35XX EMAC: RX buf mem alloc " \
 				"failed for ch %d\n", ch);
 			kfree(rxch);
 			return -ENOMEM;
@@ -1751,7 +1751,7 @@ static int emac_init_rxch(struct emac_priv *priv, u32 ch, char *param)
 
 /**
  * emac_rxch_teardown: RX channel teardown
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  *
  * Called during device stop to teardown RX channel
@@ -1777,7 +1777,7 @@ static void emac_rxch_teardown(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_stop_rxch: Stop RX channel operation
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  *
  * Called during device stop to stop RX channel operation
@@ -1799,7 +1799,7 @@ static void emac_stop_rxch(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_cleanup_rxch: Book-keep function to clean RX channel resources
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  *
  * Called during device stop to clean up RX channel resources
@@ -1835,7 +1835,7 @@ static void emac_cleanup_rxch(struct emac_priv *priv, u32 ch)
 
 /**
  * emac_set_type0addr: Set EMAC Type0 mac address
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  * @mac_addr: MAC address to set in device
  *
@@ -1862,7 +1862,7 @@ static void emac_set_type0addr(struct emac_priv *priv, u32 ch, char *mac_addr)
 
 /**
  * emac_set_type1addr: Set EMAC Type1 mac address
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  * @mac_addr: MAC address to set in device
  *
@@ -1884,7 +1884,7 @@ static void emac_set_type1addr(struct emac_priv *priv, u32 ch, char *mac_addr)
 
 /**
  * emac_set_type2addr: Set EMAC Type2 mac address
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  * @mac_addr: MAC address to set in device
  * @index: index into RX address entries
@@ -1910,7 +1910,7 @@ static void emac_set_type2addr(struct emac_priv *priv, u32 ch,
 
 /**
  * emac_setmac: Set mac address in the adapter (internal function)
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number
  * @mac_addr: MAC address to set in device
  *
@@ -1933,13 +1933,13 @@ static void emac_setmac(struct emac_priv *priv, u32 ch, char *mac_addr)
 		emac_set_type0addr(priv, ch, mac_addr);
 	} else {
 		if (netif_msg_drv(priv))
-			dev_err(emac_dev, "DaVinci EMAC: Wrong addressing\n");
+			dev_err(emac_dev, "AM35XX EMAC: Wrong addressing\n");
 	}
 }
 
 /**
  * emac_dev_setmac_addr: Set mac address in the adapter
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  * @addr: MAC address to set in device
  *
  * Called by the system to set the mac address of the adapter (Device)
@@ -1968,7 +1968,7 @@ static int emac_dev_setmac_addr(struct net_device *ndev, void *addr)
 	}
 
 	if (netif_msg_drv(priv))
-		dev_notice(emac_dev, "DaVinci EMAC: emac_dev_setmac_addr %pM\n",
+		dev_notice(emac_dev, "AM35XX EMAC: emac_dev_setmac_addr %pM\n",
 					priv->mac_addr);
 
 	return 0;
@@ -1976,7 +1976,7 @@ static int emac_dev_setmac_addr(struct net_device *ndev, void *addr)
 
 /**
  * emac_addbd_to_rx_queue: Recycle RX buffer descriptor
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number to process buffer descriptors for
  * @curr_bd: current buffer descriptor
  * @buffer: buffer pointer for descriptor
@@ -2036,7 +2036,7 @@ static void emac_addbd_to_rx_queue(struct emac_priv *priv, u32 ch,
 
 /**
  * emac_net_rx_cb: Prepares packet and sends to upper layer
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @net_pkt_list: Network packet list (received packets)
  *
  * Invalidates packet buffer memory and sends the received packet to upper
@@ -2060,7 +2060,7 @@ static int emac_net_rx_cb(struct emac_priv *priv,
 
 /**
  * emac_rx_bdproc: RX buffer descriptor (packet) processing
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  * @ch: RX channel number to process buffer descriptors for
  * @budget: number of packets allowed to process
  * @pending: indication to caller that packets are pending to process
@@ -2164,7 +2164,7 @@ end_emac_rx_bdproc:
 
 /**
  * emac_hw_enable: Enable EMAC hardware for packet transmission/reception
- * @priv: The DaVinci EMAC private adapter structure
+ * @priv: The AM35XX EMAC private adapter structure
  *
  * Enables EMAC hardware for packet processing - enables PHY, enables RX
  * for packet reception and enables device interrupts and then NAPI
@@ -2251,7 +2251,7 @@ static int emac_hw_enable(struct emac_priv *priv)
 
 /**
  * emac_poll: EMAC NAPI Poll function
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  * @budget: Number of receive packets to process (as told by NAPI layer)
  *
  * NAPI Poll function implemented to process packets as per budget. We check
@@ -2299,7 +2299,7 @@ static int emac_poll(struct napi_struct *napi, int budget)
 
 	if (unlikely(status & mask)) {
 		u32 ch, cause;
-		dev_err(emac_dev, "DaVinci EMAC: Fatal Hardware Error\n");
+		dev_err(emac_dev, "AM35XX EMAC: Fatal Hardware Error\n");
 		netif_stop_queue(ndev);
 		napi_disable(&priv->napi);
 
@@ -2334,7 +2334,7 @@ static int emac_poll(struct napi_struct *napi, int budget)
 #ifdef CONFIG_NET_POLL_CONTROLLER
 /**
  * emac_poll_controller: EMAC Poll controller function
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Polled functionality used by netconsole and others in non interrupt mode
  *
@@ -2466,7 +2466,7 @@ static void emac_adjust_link(struct net_device *ndev)
 
 /**
  * emac_devioctl: EMAC adapter ioctl
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  * @ifrq: request parameter
  * @cmd: command parameter
  *
@@ -2476,7 +2476,7 @@ static void emac_adjust_link(struct net_device *ndev)
  */
 static int emac_devioctl(struct net_device *ndev, struct ifreq *ifrq, int cmd)
 {
-	dev_warn(&ndev->dev, "DaVinci EMAC: ioctl not supported\n");
+	dev_warn(&ndev->dev, "AM35XX EMAC: ioctl not supported\n");
 
 	if (!(netif_running(ndev)))
 		return -EINVAL;
@@ -2488,7 +2488,7 @@ static int emac_devioctl(struct net_device *ndev, struct ifreq *ifrq, int cmd)
 
 /**
  * emac_dev_open: EMAC device open
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Called when system wants to start the interface. We init TX/RX channels
  * and enable the hardware for packet reception/transmission and start the
@@ -2530,12 +2530,12 @@ static int emac_dev_open(struct net_device *ndev)
 	/* multi ch not supported - open 1 TX, 1RX ch by default */
 	rc = emac_init_txch(priv, EMAC_DEF_TX_CH);
 	if (0 != rc) {
-		dev_err(emac_dev, "DaVinci EMAC: emac_init_txch() failed");
+		dev_err(emac_dev, "AM35XX EMAC: emac_init_txch() failed");
 		return rc;
 	}
 	rc = emac_init_rxch(priv, EMAC_DEF_RX_CH, priv->mac_addr);
 	if (0 != rc) {
-		dev_err(emac_dev, "DaVinci EMAC: emac_init_rxch() failed");
+		dev_err(emac_dev, "AM35XX EMAC: emac_init_rxch() failed");
 		return rc;
 	}
 
@@ -2606,7 +2606,7 @@ static int emac_dev_open(struct net_device *ndev)
 		emac_dump_regs(priv);
 
 	if (netif_msg_drv(priv))
-		dev_notice(emac_dev, "DaVinci EMAC: Opened %s\n", ndev->name);
+		dev_notice(emac_dev, "AM35XX EMAC: Opened %s\n", ndev->name);
 
 	if (priv->phy_mask)
 		phy_start(priv->phydev);
@@ -2615,7 +2615,7 @@ static int emac_dev_open(struct net_device *ndev)
 
 rollback:
 
-	dev_err(emac_dev, "DaVinci EMAC: request_irq() failed");
+	dev_err(emac_dev, "AM35XX EMAC: request_irq() failed");
 
 	for (q = k; k >= 0; k--) {
 		for (m = i; m >= res->start; m--)
@@ -2628,7 +2628,7 @@ rollback:
 
 /**
  * emac_dev_stop: EMAC device stop
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Called when system wants to stop or down the interface. We stop the network
  * queue, disable interrupts and cleanup TX/RX channels.
@@ -2666,14 +2666,14 @@ static int emac_dev_stop(struct net_device *ndev)
 	}
 
 	if (netif_msg_drv(priv))
-		dev_notice(emac_dev, "DaVinci EMAC: %s stopped\n", ndev->name);
+		dev_notice(emac_dev, "AM35XX EMAC: %s stopped\n", ndev->name);
 
 	return 0;
 }
 
 /**
  * emac_dev_getnetstats: EMAC get statistics function
- * @ndev: The DaVinci EMAC network adapter
+ * @ndev: The AM35XX EMAC network adapter
  *
  * Called when system wants to get statistics from the device.
  *
@@ -2744,14 +2744,14 @@ static const struct net_device_ops emac_netdev_ops = {
 };
 
 /**
- * davinci_emac_probe: EMAC device probe
- * @pdev: The DaVinci EMAC device that we are removing
+ * am35xx_emac_probe: EMAC device probe
+ * @pdev: The AM35XX EMAC device that we are removing
  *
  * Called when probing for emac devicesr. We get details of instances and
  * resource information from platform init and register a network device
  * and allocate resources necessary for driver to perform
  */
-static int __devinit davinci_emac_probe(struct platform_device *pdev)
+static int __devinit am35xx_emac_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct resource *res;
@@ -2764,13 +2764,13 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	/* obtain emac clock from kernel */
 	emac_clk = clk_get(&pdev->dev, "emac_clk");
 	if (IS_ERR(emac_clk)) {
-		printk(KERN_ERR "DaVinci EMAC: Failed to get EMAC clock\n");
+		printk(KERN_ERR "AM35XX EMAC: Failed to get EMAC clock\n");
 		return -EBUSY;
 	}
 	/* obtain emac functionaal clock from kernel */
 	emac_phy_clk = clk_get(&pdev->dev, "phy_clk");
 	if (IS_ERR(emac_phy_clk)) {
-		printk(KERN_ERR "DaVinci EMAC: Failed to get EMAC Functional clock\n");
+		printk(KERN_ERR "AM35XX EMAC: Failed to get EMAC Functional clock\n");
 		clk_put(emac_clk);
 		return -EBUSY;
 	}
@@ -2779,7 +2779,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 
 	ndev = alloc_etherdev(sizeof(struct emac_priv));
 	if (!ndev) {
-		printk(KERN_ERR "DaVinci EMAC: Error allocating net_device\n");
+		printk(KERN_ERR "AM35XX EMAC: Error allocating net_device\n");
 		clk_put(emac_clk);
 		clk_put(emac_phy_clk);
 		return -ENOMEM;
@@ -2789,7 +2789,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	priv = netdev_priv(ndev);
 	priv->pdev = pdev;
 	priv->ndev = ndev;
-	priv->msg_enable = netif_msg_init(debug_level, DAVINCI_EMAC_DEBUG);
+	priv->msg_enable = netif_msg_init(debug_level, AM35XX_EMAC_DEBUG);
 
 	spin_lock_init(&priv->tx_lock);
 	spin_lock_init(&priv->rx_lock);
@@ -2797,7 +2797,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
-		printk(KERN_ERR "DaVinci EMAC: No platform data\n");
+		printk(KERN_ERR "AM35XX EMAC: No platform data\n");
 		return -ENODEV;
 	}
 
@@ -2816,7 +2816,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	/* Get EMAC platform data */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		dev_err(emac_dev, "DaVinci EMAC: Error getting res\n");
+		dev_err(emac_dev, "AM35XX EMAC: Error getting res\n");
 		rc = -ENOENT;
 		goto probe_quit;
 	}
@@ -2824,7 +2824,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	priv->emac_base_phys = res->start + pdata->ctrl_reg_offset;
 	size = res->end - res->start + 1;
 	if (!request_mem_region(res->start, size, ndev->name)) {
-		dev_err(emac_dev, "DaVinci EMAC: failed request_mem_region() for regs\n");
+		dev_err(emac_dev, "AM35XX EMAC: failed request_mem_region() for regs\n");
 		rc = -ENXIO;
 		goto probe_quit;
 	}
@@ -2851,7 +2851,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
-		dev_err(emac_dev, "DaVinci EMAC: Error getting irq res\n");
+		dev_err(emac_dev, "AM35XX EMAC: Error getting irq res\n");
 		rc = -ENOENT;
 		goto no_irq_res;
 	}
@@ -2875,7 +2875,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	SET_NETDEV_DEV(ndev, &pdev->dev);
 	rc = register_netdev(ndev);
 	if (rc) {
-		dev_err(emac_dev, "DaVinci EMAC: Error in register_netdev\n");
+		dev_err(emac_dev, "AM35XX EMAC: Error in register_netdev\n");
 		rc = -ENODEV;
 		goto netdev_reg_err;
 	}
@@ -2884,7 +2884,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	/* MII/Phy intialisation, mdio bus registration */
 	emac_mii = mdiobus_alloc();
 	if (emac_mii == NULL) {
-		dev_err(emac_dev, "DaVinci EMAC: Error allocating mii_bus\n");
+		dev_err(emac_dev, "AM35XX EMAC: Error allocating mii_bus\n");
 		rc = -ENOMEM;
 		goto mdio_alloc_err;
 	}
@@ -2908,7 +2908,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 		goto mdiobus_quit;
 
 	if (netif_msg_probe(priv)) {
-		dev_notice(emac_dev, "DaVinci EMAC Probe found device "\
+		dev_notice(emac_dev, "AM35XX EMAC Probe found device "\
 			   "(regs: %p, irq: %d)\n",
 			   (void *)priv->emac_base_phys, ndev->irq);
 	}
@@ -2934,19 +2934,19 @@ probe_quit:
 }
 
 /**
- * davinci_emac_remove: EMAC device remove
- * @pdev: The DaVinci EMAC device that we are removing
+ * am35xx_emac_remove: EMAC device remove
+ * @pdev: The AM35XX EMAC device that we are removing
  *
  * Called when removing the device driver. We disable clock usage and release
  * the resources taken up by the driver and unregister network device
  */
-static int __devexit davinci_emac_remove(struct platform_device *pdev)
+static int __devexit am35xx_emac_remove(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct emac_priv *priv = netdev_priv(ndev);
 
-	dev_notice(&ndev->dev, "DaVinci EMAC: davinci_emac_remove()\n");
+	dev_notice(&ndev->dev, "AM35XX EMAC: am35xx_emac_remove()\n");
 
 	platform_set_drvdata(pdev, NULL);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -2967,7 +2967,7 @@ static int __devexit davinci_emac_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int davinci_emac_suspend(struct device *dev)
+static int am35xx_emac_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct net_device *ndev = platform_get_drvdata(pdev);
@@ -2981,7 +2981,7 @@ static int davinci_emac_suspend(struct device *dev)
 	return 0;
 }
 
-static int davinci_emac_resume(struct device *dev)
+static int am35xx_emac_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct net_device *ndev = platform_get_drvdata(pdev);
@@ -2995,49 +2995,50 @@ static int davinci_emac_resume(struct device *dev)
 	return 0;
 }
 
-static const struct dev_pm_ops davinci_emac_pm_ops = {
-	.suspend	= davinci_emac_suspend,
-	.resume		= davinci_emac_resume,
+static const struct dev_pm_ops am35xx_emac_pm_ops = {
+	.suspend	= am35xx_emac_suspend,
+	.resume		= am35xx_emac_resume,
 };
 
 /**
- * davinci_emac_driver: EMAC platform driver structure
+ * am35xx_emac_driver: EMAC platform driver structure
  */
-static struct platform_driver davinci_emac_driver = {
+static struct platform_driver am35xx_emac_driver = {
 	.driver = {
-		.name	 = "davinci_emac",
+		.name	 = "am35xx_emac",
 		.owner	 = THIS_MODULE,
-		.pm	 = &davinci_emac_pm_ops,
+		.pm	 = &am35xx_emac_pm_ops,
 	},
-	.probe = davinci_emac_probe,
-	.remove = __devexit_p(davinci_emac_remove),
+	.probe = am35xx_emac_probe,
+	.remove = __devexit_p(am35xx_emac_remove),
 };
 
 /**
- * davinci_emac_init: EMAC driver module init
+ * am35xx_emac_init: EMAC driver module init
  *
  * Called when initializing the driver. We register the driver with
  * the platform.
  */
-static int __init davinci_emac_init(void)
+static int __init am35xx_emac_init(void)
 {
-	return platform_driver_register(&davinci_emac_driver);
+	return platform_driver_register(&am35xx_emac_driver);
 }
-late_initcall(davinci_emac_init);
+late_initcall(am35xx_emac_init);
 
 /**
- * davinci_emac_exit: EMAC driver module exit
+ * am35xx_emac_exit: EMAC driver module exit
  *
  * Called when exiting the driver completely. We unregister the driver with
  * the platform and exit
  */
-static void __exit davinci_emac_exit(void)
+static void __exit am35xx_emac_exit(void)
 {
-	platform_driver_unregister(&davinci_emac_driver);
+	platform_driver_unregister(&am35xx_emac_driver);
 }
-module_exit(davinci_emac_exit);
+module_exit(am35xx_emac_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("DaVinci EMAC Maintainer: Anant Gole <anantgole@ti.com>");
-MODULE_AUTHOR("DaVinci EMAC Maintainer: Chaithrika U S <chaithrika@ti.com>");
-MODULE_DESCRIPTION("DaVinci EMAC Ethernet driver");
+MODULE_AUTHOR("AM35XX EMAC Maintainer: Anant Gole <anantgole@ti.com>");
+MODULE_AUTHOR("AM35XX EMAC Maintainer: Chaithrika U S <chaithrika@ti.com>");
+MODULE_AUTHOR("AM35XX EMAC Modified from DaVinci EMAC: <hcl@datarespons.no>");
+MODULE_DESCRIPTION("AM35XX EMAC Ethernet driver");
