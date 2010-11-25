@@ -600,6 +600,7 @@ static int omap3_pm_begin(suspend_state_t state)
 
 static void omap3_pm_end(void)
 {
+
 	suspend_state = PM_SUSPEND_ON;
 	omap_uart_enable_irqs(1);
 	enable_hlt();
@@ -609,7 +610,9 @@ static void omap3_pm_end(void)
 static const struct platform_suspend_ops omap_pm_ops = {
 	.begin		= omap3_pm_begin,
 	.end		= omap3_pm_end,
+	//.prepare	= omap3_pm_prepare,
 	.enter		= omap3_pm_enter,
+	//.finish		= omap3_pm_finish,
 	.valid		= suspend_valid_only_mem,
 };
 #endif /* CONFIG_SUSPEND */
