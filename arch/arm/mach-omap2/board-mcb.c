@@ -137,13 +137,25 @@ static void mcb_export_gpio(void) {
 	gpio_set_value(WIFI_RESETN, 1);
 	udelay(1000);
 	config_gpio_out(PWR_MANIKIN_EN, OMAP_PIN_OUTPUT, "pwr_manikin_en", 1);
+
+	config_gpio_out(PWR_LED_CTL_R, OMAP_PIN_OUTPUT, "PWR_LED_CTL_R", 0);
+	config_gpio_out(PWR_LED_CTL_G, OMAP_PIN_OUTPUT, "PWR_LED_CTL_G", 0);
+	config_gpio_out(PWR_LED_CTL_B, OMAP_PIN_OUTPUT, "PWR_LED_CTL_B", 0);
+
+	config_gpio_out(WIFI_LED_CTL_R, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_R", 0);
+	config_gpio_out(WIFI_LED_CTL_G, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_G", 0);
+	config_gpio_out(WIFI_LED_CTL_B, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_B", 0);
+
+	config_gpio_out(LED_ARB, OMAP_PIN_OUTPUT, "LED_ARB", 0);
+
+
 	config_gpio_out(MCU_BOOT0, OMAP_PIN_OUTPUT, "mcu_boot0", 0);
 	config_gpio_out(MCU_BOOT1, OMAP_PIN_OUTPUT, "mcu_boot1", 0);
 	config_gpio_out(SYS_RST, OMAP_PIN_OUTPUT, "sys_rst", 1);
 	//config_gpio_out(CPU2MCU_RST, OMAP_PIN_OUTPUT, "mcu_rst", 0);
 	config_gpio_in(CPU2MCU_RST, OMAP_PIN_INPUT_PULLUP, "CPU2MCU_RST");
-	//config_gpio_out(AC5W_SD, OMAP_PIN_OUTPUT, "ac5sw_sd", 0);
-	config_gpio_in(AC5W_SD, OMAP_PIN_INPUT_PULLUP, "ac5sw_sd");
+	config_gpio_out(AC5W_SD, OMAP_PIN_OUTPUT, "AC5W_SD", 0);
+	//config_gpio_in(AC5W_SD, OMAP_PIN_INPUT_PULLUP, "ac5sw_sd");
 	config_gpio_out(UART4_SEL, OMAP_PIN_OUTPUT, "UART4_SEL", 1);
 }
 /***********************************************************************
@@ -230,50 +242,6 @@ static struct spi_board_info mcb_spi_board_info[] __initdata = {
 	}
 };
 
-/************************************************************************
- *
- * 	LEDS
- */
-static struct gpio_led mcb_gpio_leds[] = {
-	{
-		.name	= "wifi:red",
-		.gpio	= WIFI_LED_CTL_R,
-	},
-	{
-		.name	= "wifi:green",
-		.gpio	= WIFI_LED_CTL_G,
-	},
-	{
-		.name	= "wifi:blue",
-		.gpio	= WIFI_LED_CTL_B,
-	},
-	{
-		.name	= "pwr:red",
-		.gpio	= PWR_LED_CTL_R,
-	},
-	{
-		.name	= "pwr:green",
-		.gpio	= PWR_LED_CTL_G,
-	},
-	{
-		.name	= "pwr:blue",
-		.gpio	= PWR_LED_CTL_B,
-	},
-
-};
-
-static struct gpio_led_platform_data mcb_led_data = {
-	.leds	= mcb_gpio_leds,
-	.num_leds	= ARRAY_SIZE(mcb_gpio_leds),
-};
-
-static struct platform_device mcb_leds_gpio = {
-	.name	= "leds-gpio",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mcb_led_data,
-	},
-};
 
 
 /***********************************************************************'
@@ -388,9 +356,6 @@ static void __init mcb_flash_init(void)
 static struct omap_board_config_kernel mcb_config[] __initdata = {
 };
 
-static struct platform_device *mcb_devices[] __initdata = {
-	&mcb_leds_gpio,
-};
 
 
 static int __init mcb_i2c_init(void) {
@@ -656,7 +621,7 @@ static void __init mcb_init(void)
 	mcb_init_power_off();
 	mcb_export_gpio();
 	mcb_reset_all();
-	platform_add_devices(mcb_devices, ARRAY_SIZE(mcb_devices));
+	//platform_add_devices(mcb_devices, ARRAY_SIZE(mcb_devices));
 	omap_serial_init();
 	mcb_bc_init();
 	usb_ehci_init(&ehci_pdata);
