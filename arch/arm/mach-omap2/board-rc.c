@@ -37,6 +37,7 @@
 #include <linux/smsc911x.h>
 //#include <linux/input/cyttsp.h>
 #include <linux/input/cy8ctma3001.h>
+#include <linux/gpio_keys.h>
 #include "mux.h"
 #include "hsmmc.h"
 
@@ -532,6 +533,10 @@ static int rc_twl_gpio_setup(struct device *dev,
 	return 0;
 }
 
+/*********************************************************************
+ *
+ * Touch
+ */
 /*
 static struct cyttsp_platform_data rc_truetouch_pdata = {
 	.maxx = 1023,
@@ -549,6 +554,8 @@ static struct cy8_platform_data tc_single_data = {
 	.maxy = 1023,
 	.flags =  CY8F_REVERSE_Y | CY8F_XY_AXIS_FLIPPED,
 };
+
+
 static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("tps65930", 0x48),
@@ -609,6 +616,35 @@ static int __init rc_i2c_init(void)
 	return 0;
 }
 
+/****************************************************************
+ *
+ * Buttons (GPIO keyboard)
+ */
+
+static struct gpio_keys_button buttons[] = {
+	{
+		.code = KEY_F12,
+		.gpio = GPIO_KEY1,
+		.active_low = 1,
+		.desc = "USER_BUTTON",
+		.type = EV_KEY,
+		.debounce_interval = 10,
+	},
+};
+
+static struct gpio_keys_platform_data rc_buttons_data = {
+	.buttons = buttons,
+	.nbuttons = 1,
+	.rep = 0,
+};
+
+static struct platform_device rc_buttons_device = {
+	.name          = "gpio-keys",
+	.id            = -1,
+	.dev            = {
+		.platform_data = &rc_buttons_data,
+	},
+};
 
 static void __init rc_init_irq(void)
 {
@@ -620,6 +656,7 @@ static void __init rc_init_irq(void)
 static struct platform_device *rc_devices[] __initdata = {
 	&rc_dss_device,
 	&rc_backlight_device,
+	&rc_buttons_device,
 };
 
 static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
@@ -653,8 +690,8 @@ static void __init rc_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CUS);
 	config_gpio_in(RC_WLAN_NWAKEUP, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NWAKEUP");
-	config_gpio_in(GPIO_KEY1, OMAP_PIN_INPUT, "GPIO_KEY1");
-	config_gpio_in(GPIO_KEY2, OMAP_PIN_INPUT, "GPIO_KEY2");
+	//config_gpio_in(GPIO_KEY1, OMAP_PIN_INPUT, "GPIO_KEY1");
+	//config_gpio_in(GPIO_KEY2, OMAP_PIN_INPUT, "GPIO_KEY2");
 	config_gpio_in(GPIO_PWR_BTN, OMAP_PIN_INPUT, "GPIO_PWR_BTN");
 	config_gpio_in(RC_WLAN_NPD, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NPD");
 	//config_gpio_out(GPIO_3V_PWREN, OMAP_PIN_OUTPUT, "gpio_3v_pwren", 1);
