@@ -224,7 +224,11 @@ obj-$(CONFIG_MACH_OMAP4_PANDA)		+= board-omap4panda.o \
 
 obj-$(CONFIG_MACH_OMAP3517EVM)		+= board-am3517evm.o hsmmc.o
 obj-$(CONFIG_MACH_RC)		+= board-rc.o hsmmc.o
-obj-$(CONFIG_MACH_MCB)		+= board-mcb.o hsmmc.o
+
+ifeq ($(CONFIG_MACH_MCB), y)
+obj-$(CONFIG_MCB_P1)		+= board-mcb.o hsmmc.o
+obj-$(CONFIG_MCB_P2)		+= board-mcb-p2.o hsmmc.o
+endif
 
 obj-$(CONFIG_MACH_CRANEBOARD)		+= board-am3517crane.o
 

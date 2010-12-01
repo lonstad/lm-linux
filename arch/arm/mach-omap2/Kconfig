@@ -205,6 +205,20 @@ config MACH_MCB
 	default y
 	select OMAP_PACKAGE_CBB
 	select ARCH_AM35XX
+	
+choice
+	prompt "Select MCB version"
+	depends on MACH_MCB
+	help
+	  Select one of different versions
+
+config MCB_P1
+	bool "Prototype 1"
+	
+config MCB_P2
+	bool "Prototype 2"
+	
+endchoice
 
 config MACH_CRANEBOARD
 	bool "AM3517/05 CRANE board"
