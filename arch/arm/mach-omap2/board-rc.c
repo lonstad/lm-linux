@@ -42,7 +42,7 @@
 #include "hsmmc.h"
 
 
-#define RC_GPIO_W2W_NRESET	16
+#define RC_W2W_NRESET	16
 
 
 #define G_SENSOR_INT1 156
@@ -57,31 +57,38 @@
 #define RC_TOUCH_PWREN	142
 #define RC_TOUCH_IRQ	143
 
-#define GPIO_AMP_SDN	158
+#define AMP_SDN	158
 
 #define RC_WLAN_NWAKEUP 173
 #define RC_WLAN_NPD		174
-#define GPIO_WLAN_PWREN	159
+#define PWREN_WIFI	159
 
 #define RC_LCD_LR	171
 #define RC_LCD_UD	172
 
-#define GPIO_3V_PWREN 96
+#define RC_3V_PWREN 96
 
-#define GPIO_BST5V_PWREN 98
-#define GPIO_LCD_PWRENB 55
-#define GPIO_LED_PWRENB 58
-#define GPIO_BACKL_ADJ 57
+#define BST5V_PWREN 98
+#define LCD_PWRENB 55
+#define LED_PWRENB 58
+#define BACKL_ADJ 57
 
-#define GPIO_PHY_PWREN 111
-#define RC_GPIO_USBH_NRESET	97
+#define PHY_PWREN 111
+#define RC_USBH_NRESET	97
 
-#define GPIO_OTG5V_EN 26
-#define GPIO_OTG_OC 27
+#define OTG5V_EN 26
+#define OTG_OC 27
 
-#define GPIO_KEY1 140
-#define GPIO_KEY2 141
-#define GPIO_PWR_BTN 31
+#define KEY1 140
+#define KEY2 141
+#define PWR_BTN 31
+
+#if CONFIG_RC_VERSION > 1
+#define HOST_CHG_EN	24	// Enable charge from USB
+#define LAN_PWR_EN 95	// Enable LAN chip power
+#define IUSB 94			// Enable 500 mA from USB
+#define USUS 126		// USB Suspend
+#endif
 
 
 static int rc_twl_gpio_setup(struct device *dev,
@@ -288,17 +295,17 @@ static void __init rc_flash_init(void)
 
 static int rc_enable_lcd(struct omap_dss_device *dssdev)
 {
-	gpio_set_value(GPIO_LCD_PWRENB, 1);
-	gpio_set_value(GPIO_LED_PWRENB, 1);
-	//gpio_set_value(GPIO_BACKL_ADJ, 1);
+	gpio_set_value(LCD_PWRENB, 1);
+	gpio_set_value(LED_PWRENB, 1);
+	//gpio_set_value(BACKL_ADJ, 1);
 	return 0;
 }
 
 static void rc_disable_lcd(struct omap_dss_device *dssdev)
 {
-	//gpio_set_value(GPIO_BACKL_ADJ, 0);
-	gpio_set_value(GPIO_LED_PWRENB, 0);
-	gpio_set_value(GPIO_LCD_PWRENB, 0);
+	//gpio_set_value(BACKL_ADJ, 0);
+	gpio_set_value(LED_PWRENB, 0);
+	gpio_set_value(LCD_PWRENB, 0);
 }
 
 static struct omap_dss_device rc_lcd_device = {
@@ -477,7 +484,7 @@ static struct fixed_voltage_config vcc33_config = {
 	.microvolts = 3300000,
 	.enabled_at_boot = 1,
 	.enable_high = 1,
-	.gpio = GPIO_3V_PWREN,
+	.gpio = RC_3V_PWREN,
 	.init_data = &vcc_reg_data,
 };
 
@@ -497,7 +504,7 @@ static struct fixed_voltage_config vcc_wlan_config = {
 	.microvolts = 3300000,
 	.enabled_at_boot = 0,
 	.enable_high = 1,
-	.gpio = GPIO_WLAN_PWREN,
+	.gpio = PWREN_WIFI,
 	.init_data = &vcc_wlan_reg_data,
 };
 
@@ -624,7 +631,7 @@ static int __init rc_i2c_init(void)
 static struct gpio_keys_button buttons[] = {
 	{
 		.code = KEY_F12,
-		.gpio = GPIO_KEY1,
+		.gpio = KEY1,
 		.active_low = 1,
 		.desc = "USER_BUTTON",
 		.type = EV_KEY,
@@ -665,7 +672,7 @@ static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
 	.port_mode[2] = EHCI_HCD_OMAP_MODE_UNKNOWN,
 
 	.phy_reset  = true,
-	.reset_gpio_port[0]  = RC_GPIO_USBH_NRESET,
+	.reset_gpio_port[0]  = RC_USBH_NRESET,
 	.reset_gpio_port[1]  = -EINVAL,
 	.reset_gpio_port[2]  = -EINVAL
 };
@@ -690,33 +697,33 @@ static void __init rc_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CUS);
 	config_gpio_in(RC_WLAN_NWAKEUP, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NWAKEUP");
-	//config_gpio_in(GPIO_KEY1, OMAP_PIN_INPUT, "GPIO_KEY1");
-	//config_gpio_in(GPIO_KEY2, OMAP_PIN_INPUT, "GPIO_KEY2");
-	config_gpio_in(GPIO_PWR_BTN, OMAP_PIN_INPUT, "GPIO_PWR_BTN");
+	config_gpio_in(PWR_BTN, OMAP_PIN_INPUT, "PWR_BTN");
 	config_gpio_in(RC_WLAN_NPD, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NPD");
-	//config_gpio_out(GPIO_3V_PWREN, OMAP_PIN_OUTPUT, "gpio_3v_pwren", 1);
-	config_gpio_out(GPIO_BST5V_PWREN, OMAP_PIN_OUTPUT, "GPIO_BST5V_PWREN", 1);
 
-	config_gpio_out(GPIO_LED_PWRENB, OMAP_PIN_OUTPUT, "GPIO_LED_PWRENB", 0);
-	config_gpio_out(GPIO_LCD_PWRENB, OMAP_PIN_OUTPUT, "GPIO_LCD_PWRENB", 0);
-	//config_gpio_out(GPIO_BACKL_ADJ, OMAP_PIN_OUTPUT, "GPIO_BACKL_ADJ", 1);
-	config_gpio_out(GPIO_AMP_SDN, OMAP_PIN_OUTPUT, "GPIO_AMP_SDN", 1);
+	config_gpio_out(BST5V_PWREN, OMAP_PIN_OUTPUT, "BST5V_PWREN", 1);
+	config_gpio_out(LED_PWRENB, OMAP_PIN_OUTPUT, "LED_PWRENB", 0);
+	config_gpio_out(LCD_PWRENB, OMAP_PIN_OUTPUT, "LCD_PWRENB", 0);
+	config_gpio_out(AMP_SDN, OMAP_PIN_OUTPUT, "AMP_SDN", 1);
+#if CONFIG_RC_VERSION > 1
+	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
+	config_gpio_out(HOST_CHG_EN, OMAP_PIN_OUTPUT, "HOST_CHG_EN", 0);
+	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 0);
+	config_gpio_out(LAN_PWR_EN, OMAP_PIN_OUTPUT, "LAN_PWR_EN", 1);
 	udelay(200);
-	//config_gpio_out(RC_WLAN_PWREN, OMAP_PIN_OUTPUT, "RC_WLAN_PWREN", 0);
-	udelay(600);
+#endif
 	config_gpio_out(RC_TOUCH_PWREN, OMAP_PIN_OUTPUT, "RC_TOUCH_PWREN", 1);
-	config_gpio_out(GPIO_PHY_PWREN, OMAP_PIN_OUTPUT, "GPIO_PHY_PWREN", 1);
+	config_gpio_out(PHY_PWREN, OMAP_PIN_OUTPUT, "PHY_PWREN", 1);
 	config_gpio_in(RC_TOUCH_IRQ, OMAP_PIN_INPUT, "RC_TOUCH_IRQ");
 
-	config_gpio_out(GPIO_OTG5V_EN, OMAP_PIN_OUTPUT, "GPIO_OTG5V_EN", 0);
-	config_gpio_in(GPIO_OTG_OC, OMAP_PIN_INPUT, "GPIO_OTG_OC");
+	config_gpio_out(OTG5V_EN, OMAP_PIN_OUTPUT, "OTG5V_EN", 0);
+	config_gpio_in(OTG_OC, OMAP_PIN_INPUT, "OTG_OC");
 
 	rc_i2c_init();
 	platform_device_register(&regulator_devices[0]);
 	platform_device_register(&regulator_devices[1]);
-	config_gpio_out(RC_GPIO_W2W_NRESET, OMAP_PIN_OUTPUT, "RC_GPIO_W2W_NRESET", 0);
+	config_gpio_out(RC_W2W_NRESET, OMAP_PIN_OUTPUT, "RC_W2W_NRESET", 0);
 	mdelay(2);
-	gpio_set_value(RC_GPIO_W2W_NRESET, 1);
+	gpio_set_value(RC_W2W_NRESET, 1);
 	platform_add_devices(rc_devices, ARRAY_SIZE(rc_devices));
 	omap_serial_init();
 #ifdef SUPPORT_NAND
@@ -732,6 +739,7 @@ static void __init rc_init(void)
 
 	config_gpio_out(RC_LCD_LR, OMAP_PIN_OUTPUT, "lcd_lr", 1);
 	config_gpio_out(RC_LCD_UD, OMAP_PIN_OUTPUT, "lcd_ud", 0);
+	printk(KERN_INFO "Laerdal RC v%d init done\n", CONFIG_RC_VERSION);
 }
 
 MACHINE_START(OVERO, "Laerdal Remote Control")

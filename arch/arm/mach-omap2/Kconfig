@@ -198,6 +198,11 @@ config MACH_RC
 	depends on ARCH_OMAP3
 	default y
 	select OMAP_PACKAGE_CUS
+
+config RC_VERSION
+    int "Version Num"
+    depends on MACH_RC
+    default 2
 	
 config MACH_MCB
 	bool "Laerdal MCB"
