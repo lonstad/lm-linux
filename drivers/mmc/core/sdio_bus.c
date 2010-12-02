@@ -19,7 +19,7 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/sdio_func.h>
-#include <linux/mmc/host.h>
+
 #include "sdio_cis.h"
 #include "sdio_bus.h"
 
@@ -133,7 +133,7 @@ static int sdio_bus_probe(struct device *dev)
 	 * it should call pm_runtime_put_noidle() in its probe routine and
 	 * pm_runtime_get_noresume() in its remove routine.
 	 */
-	if ( func->card->host->caps & MMC_CAP_RUNTIME_PM ) {
+	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD) {
 		ret = pm_runtime_get_sync(dev);
 		if (ret < 0)
 			goto out;
@@ -154,7 +154,7 @@ static int sdio_bus_probe(struct device *dev)
 	return 0;
 
 disable_runtimepm:
-	if ( func->card->host->caps & MMC_CAP_RUNTIME_PM )
+	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD)
 		pm_runtime_put_noidle(dev);
 out:
 	return ret;
@@ -167,11 +167,12 @@ static int sdio_bus_remove(struct device *dev)
 	int ret = 0;
 
 	/* Make sure card is powered before invoking ->remove() */
-	if ( func->card->host->caps & MMC_CAP_RUNTIME_PM ) {
+	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD) {
 		ret = pm_runtime_get_sync(dev);
 		if (ret < 0)
 			goto out;
 	}
+
 	drv->remove(func);
 
 	if (func->irq_handler) {
@@ -182,15 +183,13 @@ static int sdio_bus_remove(struct device *dev)
 		sdio_release_host(func);
 	}
 
-	if ( func->card->host->caps & MMC_CAP_RUNTIME_PM ) {
-		/* First, undo the increment made directly above */
+	/* First, undo the increment made directly above */
 	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD)
 		pm_runtime_put_noidle(dev);
 
-		/* Then undo the runtime PM settings in sdio_bus_probe() */
+	/* Then undo the runtime PM settings in sdio_bus_probe() */
 	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD)
 		pm_runtime_put_noidle(dev);
-	}
 
 out:
 	return ret;
@@ -200,7 +199,7 @@ out:
 
 static int sdio_bus_pm_prepare(struct device *dev)
 {
-
+	struct sdio_func *func = dev_to_sdio_func(dev);
 
 	/*
 	 * Resume an SDIO device which was suspended at run time at this
@@ -223,8 +222,7 @@ static int sdio_bus_pm_prepare(struct device *dev)
 	 * since there is little point in failing system suspend if a
 	 * device can't be resumed.
 	 */
-	struct sdio_func *func = dev_to_sdio_func(dev);
-	if ( func->card->host->caps & MMC_CAP_RUNTIME_PM )
+	if (func->card->host->caps & MMC_CAP_POWER_OFF_CARD)
 		pm_runtime_resume(dev);
 
 	return 0;

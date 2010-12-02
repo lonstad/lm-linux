@@ -547,11 +547,12 @@ static void mmc_sdio_detect(struct mmc_host *host)
 	BUG_ON(!host->card);
 
 	/* Make sure card is powered before detecting it */
-	if ( host->caps & MMC_CAP_RUNTIME_PM ) {
+	if (host->caps & MMC_CAP_POWER_OFF_CARD) {
 		err = pm_runtime_get_sync(&host->card->dev);
 		if (err < 0)
 			goto out;
 	}
+
 	mmc_claim_host(host);
 
 	/*
@@ -583,8 +584,6 @@ out:
 		mmc_detach_bus(host);
 		mmc_release_host(host);
 	}
-	if ( host->caps & MMC_CAP_RUNTIME_PM )
-		pm_runtime_put(&host->card->dev);
 }
 
 /*
@@ -756,7 +755,6 @@ int mmc_attach_sdio(struct mmc_host *host)
 		/*
 		 * Let runtime PM core know our card is active
 		 */
-	if ( host->caps & MMC_CAP_RUNTIME_PM ) {
 		err = pm_runtime_set_active(&card->dev);
 		if (err)
 			goto remove;
@@ -766,6 +764,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 		 */
 		pm_runtime_enable(&card->dev);
 	}
+
 	/*
 	 * The number of functions on the card is encoded inside
 	 * the ocr.
@@ -784,7 +783,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 		/*
 		 * Enable Runtime PM for this func (if supported)
 		 */
-		if ( host->caps & MMC_CAP_RUNTIME_PM )
+		if (host->caps & MMC_CAP_POWER_OFF_CARD)
 			pm_runtime_enable(&card->sdio_func[i]->dev);
 	}
 
