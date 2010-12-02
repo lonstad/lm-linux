@@ -657,7 +657,7 @@ static void __init rc_init_irq(void)
 {
 	omap2_init_common_hw(NULL, NULL);
 	omap_init_irq();
-	omap_gpio_init();
+	//omap_gpio_init();
 }
 
 static struct platform_device *rc_devices[] __initdata = {

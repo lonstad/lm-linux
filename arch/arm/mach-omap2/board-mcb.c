@@ -574,7 +574,7 @@ static void __init mcb_init_irq(void)
 	omap_board_config_size = ARRAY_SIZE(mcb_config);
 	omap2_init_common_hw(NULL, NULL);
 	omap_init_irq();
-	omap_gpio_init();
+	//omap_gpio_init();
 }
 
 static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
