@@ -27,6 +27,8 @@
 #include <plat/mcspi.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/pll1708.h>
+#include <linux/input.h>
+#include <linux/gpio_keys.h>
 
 #include <plat/nand.h>
 #include <plat/gpmc.h>
@@ -50,19 +52,22 @@
 #define RTC_IRQ_N 	55	// GPIO interrupt for RTC
 
 // BC
-#define PSU_PWTBN_CTL1	63	// Communication with BC
-#define PSU_PWTBN_CTL2	64	// Communication with BC
+#define PSU_PWTBN_CTL1	63	// TODO: not yet defined
+#define PSU_PWTBN_CTL2	64	// TODO: not yet defined
 #define LED_ARB			99
-#define I2C_ARB	  		100	// Master select 0 (default) is BC, 1 is omap
-#define I2C_MODE		101	// Interrupt from BC (low) TODO: Check level
-#define ISP_MODE		102 // Sets update mode on BC when 1
-
+#define I2C_REQ	  		100	// Master select 0 (default) is BC, 1 is omap
+#define I2C_ACK			101	// Interrupt from BC (low) TODO: Check level
+#define PWR_BUTTON		92	// Power button event
 // Wifi
 #define WIFI_SD			69	// Powerdown WiFI when 0
 #define WIFI_PD_N		86
 #define WIFI_LED_CTL_R	182
 #define WIFI_LED_CTL_G	181
 #define WIFI_LED_CTL_B	180
+
+// Audio
+#define LINE_IN_DET	90	// Mic/line in plugged
+#define LINE_OUT_DET 91	// Audio jack connected
 
 // Resets
 #define LAN_PHY_RST_N 	25
@@ -91,6 +96,9 @@
 #define AC5W_SD_N 84
 
 #define UART4_SEL 68
+
+// MMC
+#define SD1_CDS_N 127
 
 /***********************************************************************
  *
@@ -152,15 +160,28 @@ static void mcb_export_gpio(void) {
 	config_gpio_out(WIFI_RST_N, OMAP_PIN_OUTPUT, "WIFI_RST_N", 0);
 	config_gpio_out(WIFI_SD, OMAP_PIN_INPUT_PULLUP, "WIFI_SD", 1);
 
-	config_gpio_out(PWR_MANIKIN_EN, OMAP_PIN_OUTPUT, "PWR_MANIKIN_EN", 1);
+
+	config_gpio_out(PWR_MANIKIN_EN, OMAP_PIN_OUTPUT, "PWR_MANIKIN_EN", 0);
 	config_gpio_out(MCU_BOOT0, OMAP_PIN_OUTPUT, "MCU_BOOT0", 0);
 	config_gpio_out(MCU_BOOT1, OMAP_PIN_OUTPUT, "MCU_BOOT1", 0);
 
+	config_gpio_out(PWR_LED_CTL_R, OMAP_PIN_OUTPUT, "PWR_LED_CTL_R", 0);
+	config_gpio_out(PWR_LED_CTL_G, OMAP_PIN_OUTPUT, "PWR_LED_CTL_G", 0);
+	config_gpio_out(PWR_LED_CTL_B, OMAP_PIN_OUTPUT, "PWR_LED_CTL_B", 0);
+
+	config_gpio_out(WIFI_LED_CTL_R, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_R", 0);
+	config_gpio_out(WIFI_LED_CTL_G, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_G", 0);
+	config_gpio_out(WIFI_LED_CTL_B, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_B", 0);
+
 	//config_gpio_out(CPU2MCU_RST, OMAP_PIN_OUTPUT, "CPU2MCU_RST", 0);
-	config_gpio_in(CPU2MCU_RST, OMAP_PIN_INPUT_PULLUP, "CPU2MCU_RST");
+	config_gpio_in(CPU2MCU_RST, OMAP_PIN_INPUT_PULLUP, "CPU2MCU_RST");	// TODO: Should become output
 	config_gpio_out(AC5W_SD_N, OMAP_PIN_OUTPUT, "AC5W_SD_N", 0);
 	config_gpio_out(UART4_SEL, OMAP_PIN_OUTPUT, "UART4_SEL", 1);
 	config_gpio_in(USB_OC_N, OMAP_PIN_INPUT_PULLUP, "USB_OC_N");
+
+	config_gpio_in(LINE_IN_DET, OMAP_PIN_INPUT_PULLUP, "LINE_IN_DET");
+	config_gpio_in(LINE_OUT_DET, OMAP_PIN_INPUT_PULLUP, "LINE_OUT_DET");
+
 }
 /***********************************************************************
  *
@@ -238,57 +259,12 @@ static struct omap2_mcspi_device_config mcb_mcspi_config = {
 
 static struct spi_board_info mcb_spi_board_info[] __initdata = {
 	{
-		.modalias		= "pll1708",
-		.bus_num		= 1,
+		.modalias			= "pll1708",
+		.bus_num			= 1,
 		.chip_select		= 0,
 		.max_speed_hz		= 1000000,
 		.controller_data	= &mcb_mcspi_config,
 	}
-};
-
-/************************************************************************
- *
- * 	LEDS
- */
-static struct gpio_led mcb_gpio_leds[] = {
-	{
-		.name	= "wifi:red",
-		.gpio	= WIFI_LED_CTL_R,
-	},
-	{
-		.name	= "wifi:green",
-		.gpio	= WIFI_LED_CTL_G,
-	},
-	{
-		.name	= "wifi:blue",
-		.gpio	= WIFI_LED_CTL_B,
-	},
-	{
-		.name	= "pwr:red",
-		.gpio	= PWR_LED_CTL_R,
-	},
-	{
-		.name	= "pwr:green",
-		.gpio	= PWR_LED_CTL_G,
-	},
-	{
-		.name	= "pwr:blue",
-		.gpio	= PWR_LED_CTL_B,
-	},
-
-};
-
-static struct gpio_led_platform_data mcb_led_data = {
-	.leds	= mcb_gpio_leds,
-	.num_leds	= ARRAY_SIZE(mcb_gpio_leds),
-};
-
-static struct platform_device mcb_leds_gpio = {
-	.name	= "leds-gpio",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &mcb_led_data,
-	},
 };
 
 
@@ -313,9 +289,9 @@ static void __init mcb_rtc_init(void) {
 
 static void mcb_bc_init(void) {
 	int r;
-	r = config_gpio_out(I2C_ARB, OMAP_PIN_OUTPUT, "i2c_arb1", 1);	// Take control of interface
-	r = config_gpio_out(I2C_MODE, OMAP_PIN_OUTPUT, "i2c_mode", 1);
-	r = config_gpio_out(ISP_MODE, OMAP_PIN_OUTPUT, "isp_mode", 0);	// TODO: Check interrupt level
+	r = config_gpio_out(I2C_REQ, OMAP_PIN_OUTPUT, "I2C3_REQ", 1);
+	r = config_gpio_in(I2C_ACK, OMAP_PIN_OUTPUT, "I2C3_ACK");
+	config_gpio_out(LED_ARB, OMAP_PIN_OUTPUT, "LED_ARB", 1);
 	mcb_i2c3_boardinfo[0].platform_data = NULL;
 }
 
@@ -329,15 +305,13 @@ static void mcb_bc_init(void) {
 static struct omap_board_config_kernel mcb_config[] __initdata = {
 };
 
-static struct platform_device *mcb_devices[] __initdata = {
-	&mcb_leds_gpio,
-};
-
-
 static int __init mcb_i2c_init(void) {
 	omap_register_i2c_bus(1, 400, mcb_i2c1_boardinfo, ARRAY_SIZE(mcb_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, mcb_i2c2_boardinfo, ARRAY_SIZE(mcb_i2c2_boardinfo));
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	if (gpio_get_value(I2C_ACK) == 0)
+		printk(KERN_ERR "%s BC did not grant us I2C3\n", __func__);
+	else
+		omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
 	return 0;
 }
 
@@ -346,7 +320,6 @@ static void mcb_reset_all(void) {
 	gpio_set_value(LAN_PHY_RST_N, 0);
 	gpio_set_value(AC2_RST_N, 0);
 	udelay(1000);
-	gpio_set_value(WIFI_RST_N, 1);
 	gpio_set_value(WIFI_RST_N, 1);
 	gpio_set_value(LAN_PHY_RST_N, 1);
 	gpio_set_value(AC2_RST_N, 1);
@@ -361,8 +334,8 @@ static void mcb_reset_all(void) {
 static struct omap2_hsmmc_info mmc[] = {
 	{
 		.mmc            = 1,
-		.caps		= MMC_CAP_4_BIT_DATA,
-		.gpio_cd        = -EINVAL,
+		.caps			= MMC_CAP_4_BIT_DATA,
+		.gpio_cd        = SD1_CDS_N,
 		.gpio_wp        = -EINVAL,
 		.ocr_mask	    = MMC_VDD_32_33,
 	},
@@ -490,6 +463,7 @@ void mcb_ethernet_init(struct emac_platform_data *pdata) {
  * 	Power off hook
  */
 
+// TODO: Check BC implementation
 static void mcb_power_off(void) {
 	gpio_set_value(PSU_PWTBN_CTL1, 1);
 	mdelay(1);
@@ -503,6 +477,35 @@ static void  __init mcb_init_power_off(void) {
 	pm_power_off = mcb_power_off;
 }
 
+/****************************************************************
+ *
+ * Buttons (GPIO keyboard)
+ */
+
+static struct gpio_keys_button buttons[] = {
+	{
+		.code = KEY_POWER,
+		.gpio = PWR_BUTTON,
+		.active_low = 0,
+		.desc = "PWR_BUTTON",
+		.type = EV_KEY,
+		.debounce_interval = 10,
+	},
+};
+
+static struct gpio_keys_platform_data mcb_buttons_data = {
+	.buttons = buttons,
+	.nbuttons = 1,
+	.rep = 0,
+};
+
+static struct platform_device mcb_buttons_device = {
+	.name          = "gpio-keys",
+	.id            = -1,
+	.dev            = {
+		.platform_data = &mcb_buttons_data,
+	},
+};
 
 /******************************************************************
  *
@@ -553,7 +556,7 @@ static void __init mcb_init_irq(void)
 	omap_board_config_size = ARRAY_SIZE(mcb_config);
 	omap2_init_common_hw(NULL, NULL);
 	omap_init_irq();
-	omap_gpio_init();
+	//omap_gpio_init();
 }
 
 static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
@@ -592,11 +595,12 @@ static struct omap_musb_board_data musb_board_data = {
 	//.extvbus	 	= 1,
 };
 
+static struct platform_device *mcb_devices[] __initdata = {
+	&mcb_buttons_device,
+};
 
 static void __init mcb_init(void)
 {
-
-
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
 	mcb_init_power_off();
 	mcb_export_gpio();
@@ -613,20 +617,13 @@ static void __init mcb_init(void)
 	mcb_rtc_init();
 	/* I2C */
 	mcb_i2c_init();
-	i2c_register_board_info(3, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
-
-#ifdef HAS_FLASH
-	mcb_flash_init();
-#endif
-
+	/* SPI */
 	spi_register_board_info(mcb_spi_board_info, ARRAY_SIZE(mcb_spi_board_info));
-	//mdelay(200);
-
 	/* MMC */
 	omap2_hsmmc_init(mmc);
 }
 
-MACHINE_START(OMAP3517EVM, "DR MCB board")
+MACHINE_START(OMAP3517EVM, "DR MCB-P2 board")
 	.boot_params	= 0x80000100,
 	.map_io		= omap3_map_io,
 	.init_irq	= mcb_init_irq,
