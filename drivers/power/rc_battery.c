@@ -23,15 +23,25 @@
 #include <linux/slab.h>
 
 
-#define RC_REG_VERSION 0x00
-#define RC_REG_LED_STATUS 0x01
-#define RC_REG_CHARGE_STATUS 0x02
-#define RC_REG_VOLT_MSB	0x03
-#define RC_REG_VOLT_LSB	0x04
-#define RC_REG_TEMP_MSB	0x05
-#define RC_REG_TEMP_LSB	0x06
-#define RC_REG_STATE_CHARGE	0x07
-#define RC_REG_STATE_CHARGE_SOC	0x08
+typedef enum  {
+		RC_REG_VERSION = 0x0,
+		RC_REG_LED_STATUS = 0x1,
+		RC_REG_CHARGE_STATUS = 0x2,
+		RC_REG_VOLT_MSB = 0x3,
+		RC_REG_VOLT_LSB = 0x4,
+		RC_REG_TEMP_MSB = 0x5,
+		RC_REG_TEMP_LSB = 0x6,
+		RC_REG_STATE_CHARGE = 0x7,
+		RC_REG_STATE_CHARGE_SOC = 0x8,
+		RC_REG_ID0 = 0x10,
+		RC_REG_ID1 = 0x11,
+		RC_REG_ID2 = 0x12,
+		RC_REG_ID3 = 0x13,
+		RC_REG_RED = 0x14,
+		RC_REG_GREEN = 0x15,
+		RC_REG_BLUE = 0x16
+} RC_REGS;
+
 
 struct rc_info;
 
