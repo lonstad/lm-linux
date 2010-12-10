@@ -91,6 +91,7 @@
 // USB
 #define USB_HOST_EN_N 65	// USB HOST VBUS enable
 #define USB_OC_N 0			// Flag from HOST USB VBUS (fault when 0)
+#define USB_HOST_RST_N 24
 
 // 5 watt apml shutdown
 #define AC5W_SD_N 84
@@ -155,7 +156,6 @@ static void mcb_export_gpio(void) {
 	config_gpio_out(RTC_RST_N, OMAP_PIN_OUTPUT, "RTC_RST_N", 1);
 	config_gpio_out(LAN_PHY_RST_N, OMAP_PIN_OUTPUT, "LAN_PHY_RST_N", 1);
 	config_gpio_out(AC2_RST_N, OMAP_PIN_OUTPUT, "AC2_RST_N", 1);
-	config_gpio_out(RTC_RST_N, OMAP_PIN_OUTPUT, "RTC_RST_N", 1);
 	config_gpio_in(WIFI_PD_N, OMAP_PIN_INPUT_PULLUP, "WIFI_PD_N");
 	config_gpio_out(WIFI_RST_N, OMAP_PIN_OUTPUT, "WIFI_RST_N", 0);
 	config_gpio_out(WIFI_SD, OMAP_PIN_INPUT_PULLUP, "WIFI_SD", 1);
@@ -177,6 +177,7 @@ static void mcb_export_gpio(void) {
 	config_gpio_in(CPU2MCU_RST, OMAP_PIN_INPUT_PULLUP, "CPU2MCU_RST");	// TODO: Should become output
 	config_gpio_out(AC5W_SD_N, OMAP_PIN_OUTPUT, "AC5W_SD_N", 0);
 	config_gpio_out(UART4_SEL, OMAP_PIN_OUTPUT, "UART4_SEL", 1);
+	config_gpio_out(USB_HOST_EN_N, OMAP_PIN_OUTPUT, "USB_HOST_EN_N", 0);
 	config_gpio_in(USB_OC_N, OMAP_PIN_INPUT_PULLUP, "USB_OC_N");
 
 	config_gpio_in(LINE_IN_DET, OMAP_PIN_INPUT_PULLUP, "LINE_IN_DET");
@@ -195,6 +196,14 @@ static struct i2c_board_info __initdata mcb_i2c1_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("AT24C16BN", 0x50),
 		.type = "24c16",
+	},
+	{
+		I2C_BOARD_INFO("one_wire_bridge_0", 0x30 >> 1),
+		.type = "ds2482",
+	},
+	{
+		I2C_BOARD_INFO("one_wire_bridge_1", 0x32 >> 1),
+		.type = "ds2482",
 	},
 
 };
@@ -227,14 +236,7 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 		I2C_BOARD_INFO("PSU", 0xF0 >> 1),
 		.type = "mcb-bc",
 	},
-	{
-		I2C_BOARD_INFO("one_wire_bridge_0", 0x30 >> 1),
-		.type = "ds2482",
-	},
-	{
-		I2C_BOARD_INFO("one_wire_bridge_1", 0x32 >> 1),
-		.type = "ds2482",
-	},
+
 	{
 		I2C_BOARD_INFO("pwrmon_adapter", 0x80 >> 1),
 		.type = "ina219",
@@ -309,9 +311,9 @@ static int __init mcb_i2c_init(void) {
 	omap_register_i2c_bus(1, 400, mcb_i2c1_boardinfo, ARRAY_SIZE(mcb_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, mcb_i2c2_boardinfo, ARRAY_SIZE(mcb_i2c2_boardinfo));
 	if (gpio_get_value(I2C_ACK) == 0)
-		printk(KERN_ERR "%s BC did not grant us I2C3\n", __func__);
-	else
-		omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
+		printk(KERN_ERR "%s BC did not grant us I2C3 - using it anyway\n", __func__);
+
+	omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
 	return 0;
 }
 
@@ -335,7 +337,7 @@ static struct omap2_hsmmc_info mmc[] = {
 	{
 		.mmc            = 1,
 		.caps			= MMC_CAP_4_BIT_DATA,
-		.gpio_cd        = SD1_CDS_N,
+		.gpio_cd        = -EINVAL, //SD1_CDS_N,
 		.gpio_wp        = -EINVAL,
 		.ocr_mask	    = MMC_VDD_32_33,
 	},
@@ -561,11 +563,11 @@ static void __init mcb_init_irq(void)
 
 static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 	.port_mode[0] = EHCI_HCD_OMAP_MODE_PHY,
-	.port_mode[1] = EHCI_HCD_OMAP_MODE_PHY,
+	.port_mode[1] = EHCI_HCD_OMAP_MODE_UNKNOWN,
 	.port_mode[2] = EHCI_HCD_OMAP_MODE_UNKNOWN,
 
-	.phy_reset  = false,
-	.reset_gpio_port[0]  = -EINVAL,
+	.phy_reset  = true,
+	.reset_gpio_port[0]  = USB_HOST_RST_N,
 	.reset_gpio_port[1]  = -EINVAL,
 	.reset_gpio_port[2]  = -EINVAL
 };
@@ -579,6 +581,8 @@ static struct omap_board_mux board_mux[] __initdata = {
 	OMAP3_MUX(SDMMC2_DAT7, OMAP_MUX_MODE1 | OMAP_PIN_INPUT),
 	OMAP3_MUX(SAD2D_MCAD25, OMAP_MUX_MODE2 | OMAP_PIN_OUTPUT),
 	OMAP3_MUX(SAD2D_MCAD28, OMAP_MUX_MODE2 | OMAP_PIN_INPUT),
+	OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(ETK_D11, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 	OMAP3_MUX(SYS_NIRQ, OMAP_MUX_MODE1 | OMAP_PIN_INPUT),
 
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
@@ -601,7 +605,7 @@ static struct platform_device *mcb_devices[] __initdata = {
 
 static void __init mcb_init(void)
 {
-	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
+	omap3_mux_init(board_mux, OMAP_PACKAGE_CUS);
 	mcb_init_power_off();
 	mcb_export_gpio();
 	mcb_reset_all();
@@ -609,7 +613,7 @@ static void __init mcb_init(void)
 	omap_serial_init();
 	mcb_bc_init();
 	usb_ehci_init(&ehci_pdata);
-	usb_musb_init(&musb_board_data);
+	//usb_musb_init(&musb_board_data);
 	mcb_evm_hecc_init(&mcb_evm_hecc_pdata);
 	/* NET */
 	mcb_ethernet_init(&mcb_emac_pdata);

@@ -34,7 +34,7 @@ config ARCH_OMAP3
 	default y
 	select CPU_V7
 	select USB_ARCH_HAS_EHCI
-	select ARM_L1_CACHE_SHIFT_6
+	select ARM_L1_CACHE_SHIFT_6 if !ARCH_OMAP4
 
 config ARCH_AM35XX
 	bool "TI AM3517/3505"
@@ -208,7 +208,7 @@ config MACH_MCB
 	bool "Laerdal MCB"
 	depends on ARCH_OMAP3
 	default y
-	select OMAP_PACKAGE_CBB
+	select OMAP_PACKAGE_CUS
 	select ARCH_AM35XX
 	
 choice

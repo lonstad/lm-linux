@@ -195,22 +195,15 @@ static int i2c_legacy_resume(struct device *dev)
 static int i2c_device_pm_suspend(struct device *dev)
 {
 	const struct dev_pm_ops *pm = dev->driver ? dev->driver->pm : NULL;
-	int ret;
 
-	if (pm_runtime_suspended(dev))
-		return 0;
-
-	if (pm)
-		ret = pm->suspend ? pm->suspend(dev) : 0;
-	else
-		ret = i2c_legacy_suspend(dev, PMSG_SUSPEND);
-
-	if (!ret) {
-		pm_runtime_disable(dev);
-		pm_runtime_set_suspended(dev);
-		pm_runtime_enable(dev);
+	if (pm) {
+		if (pm_runtime_suspended(dev))
+			return 0;
+		else
+			return pm->suspend ? pm->suspend(dev) : 0;
 	}
-	return ret;
+
+	return i2c_legacy_suspend(dev, PMSG_SUSPEND);
 }
 
 static int i2c_device_pm_resume(struct device *dev)

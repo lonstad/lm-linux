@@ -3191,7 +3191,7 @@ static struct clk uart4_fck_am35xx = {
 	.parent		= &core_48m_fck,
 	.enable_reg	= OMAP_CM_REGADDR(CORE_MOD, CM_FCLKEN1),
 	.enable_bit	= AM35XX_EN_UART4_SHIFT,
-	.clkdm_name	= "core_clkdm",
+	.clkdm_name	= "core_l4_clkdm",
 	.recalc		= &followparent_recalc,
 };
 

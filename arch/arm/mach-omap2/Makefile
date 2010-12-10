@@ -238,11 +238,7 @@ obj-$(CONFIG_MACH_TI8168EVM)		+= board-ti8168evm.o
 # Platform specific device init code
 usbfs-$(CONFIG_ARCH_OMAP_OTG)		:= usb-fs.o
 obj-y					+= $(usbfs-m) $(usbfs-y)
-ifeq ($(CONFIG_ARCH_AM35XX), y)
-  obj-y					+= usb-musb-am35xx.o
-else
 obj-y					+= usb-musb.o
-endif
 obj-$(CONFIG_MACH_OMAP2_TUSB6010)	+= usb-tusb6010.o
 obj-y					+= usb-ehci.o
 
@@ -255,11 +251,5 @@ obj-y					+= $(nand-m) $(nand-y)
 smc91x-$(CONFIG_SMC91X)			:= gpmc-smc91x.o
 obj-y					+= $(smc91x-m) $(smc91x-y)
 
-
-#CFLAGS_REMOVE_pm34xx.o = -Os
-CFLAGS_REMOVE_pm.o = -Os
-CFLAGS_REMOVE_omap_hwmod_am35xx_data.o = -Os
-CFLAGS_REMOVE_omap_hwmod.o = -Os
-CFLAGS_REMOVE_serial.o = -Os
-
-
+smsc911x-$(CONFIG_SMSC911X)		:= gpmc-smsc911x.o
+obj-y					+= $(smsc911x-m) $(smsc911x-y)
