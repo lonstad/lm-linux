@@ -11,6 +11,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/usb/otg.h>
 #include <linux/platform_device.h>
 #include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
@@ -738,7 +739,9 @@ static void __init rc_init(void)
 	rc_flash_init();
 #endif
 	usb_musb_init(&musb_board_data);
+#if CONFIG_RC_VERSION > 1
 	usb_ehci_init(&rc_ehci_pdata);
+#endif
 	rc_init_smsc911x();
 
 	/* Ensure SDRC pins are mux'd for self-refresh */
