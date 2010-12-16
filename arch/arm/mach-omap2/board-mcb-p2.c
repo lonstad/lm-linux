@@ -12,6 +12,7 @@
 #include <linux/am35xx_emac.h>
 #include <linux/can/platform/ti_hecc.h>
 #include <linux/i2c/ina219_cal.h>
+#include <linux/usb/otg.h>
 #include <mach/hardware.h>
 #include <mach/am35xx.h>
 #include <asm/mach-types.h>
@@ -42,6 +43,7 @@
 #include "hsmmc.h"
 
 
+int omap_pwm_init(void);
 /***********************************************************************
  *
  * 	GPIO definitions
@@ -236,7 +238,7 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 		I2C_BOARD_INFO("PSU", 0xF0 >> 1),
 		.type = "mcb-bc",
 	},
-
+#if 0
 	{
 		I2C_BOARD_INFO("pwrmon_adapter", 0x80 >> 1),
 		.type = "ina219",
@@ -247,6 +249,7 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 		.type = "ina219",
 		.platform_data = &system_ina219_cal,
 	},
+#endif
 };
 
 /*******************************************************************************
@@ -593,10 +596,10 @@ static struct omap_board_mux board_mux[] __initdata = {
 #endif
 
 static struct omap_musb_board_data musb_board_data = {
-	.interface_type		= MUSB_INTERFACE_ULPI,
-	.mode			= MUSB_OTG,
+	.interface_type		= MUSB_INTERFACE_UTMI,
+	.mode			= MUSB_PERIPHERAL,
 	.power			= 100,
-	//.extvbus	 	= 1,
+	.extvbus	 	= 1,
 };
 
 static struct platform_device *mcb_devices[] __initdata = {
@@ -613,7 +616,7 @@ static void __init mcb_init(void)
 	omap_serial_init();
 	mcb_bc_init();
 	usb_ehci_init(&ehci_pdata);
-	//usb_musb_init(&musb_board_data);
+	usb_musb_init(&musb_board_data);
 	mcb_evm_hecc_init(&mcb_evm_hecc_pdata);
 	/* NET */
 	mcb_ethernet_init(&mcb_emac_pdata);
@@ -625,6 +628,7 @@ static void __init mcb_init(void)
 	spi_register_board_info(mcb_spi_board_info, ARRAY_SIZE(mcb_spi_board_info));
 	/* MMC */
 	omap2_hsmmc_init(mmc);
+
 }
 
 MACHINE_START(OMAP3517EVM, "DR MCB-P2 board")
