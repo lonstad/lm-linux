@@ -52,6 +52,7 @@ struct rc_info {
 	struct i2c_client	*client;
 	struct power_supply	battery;
 	int	id;
+	u8 charge_status;
 };
 
 static DEFINE_IDR(battery_id);
@@ -167,14 +168,21 @@ static int rc_get_charge_status(struct rc_info *info, int *status)
 	 * Voltage is measured in units of 1mV. The voltage is stored as
 	 * a 10-bit number plus sign, in the upper bits of a 16-bit register
 	 */
-	err = rc_read_reg(info, RC_REG_STATE_CHARGE, &status_raw);
+	err = rc_read_reg(info, RC_REG_CHARGE_STATUS, &status_raw);
 	if (err)
 		return err;
 
-	if ( status_raw )
+	info->charge_status = status_raw;
+	if ( status_raw  & 1)
 		*status = POWER_SUPPLY_STATUS_CHARGING;
 	else
-		*status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+	{
+		if ( (status_raw & 0x10) && !(status_raw & 0x2) )
+			*status = POWER_SUPPLY_STATUS_DISCHARGING;
+		else
+			*status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+	}
+
 	return 0;
 }
 
@@ -204,6 +212,15 @@ static int rc_battery_get_property(struct power_supply *psy,
 		ret = rc_get_temp(info, &val->intval);
 		break;
 
+	case POWER_SUPPLY_PROP_ONLINE:
+		ret = rc_get_charge_status(info, &val->intval);
+		if (info->charge_status & 0x2)
+			val->intval = 1;
+		else
+			val->intval = 0;
+		break;
+
+
 	default:
 		ret = -EINVAL;
 	}
@@ -216,6 +233,8 @@ static enum power_supply_property rc_battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_ONLINE,
+
 };
 
 static void rc_power_supply_init(struct power_supply *battery)
