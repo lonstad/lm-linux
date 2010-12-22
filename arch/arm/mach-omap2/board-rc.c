@@ -58,7 +58,7 @@
 #define RC_TOUCH_PWREN	142
 #define RC_TOUCH_IRQ	143
 
-#define AMP_SDN	158
+#define AMP_SD	158
 
 #define RC_WLAN_NWAKEUP 173
 #define RC_WLAN_NPD		174
@@ -708,7 +708,7 @@ static void __init rc_init(void)
 	config_gpio_out(BST5V_PWREN, OMAP_PIN_OUTPUT, "BST5V_PWREN", 1);
 	config_gpio_out(LED_PWRENB, OMAP_PIN_OUTPUT, "LED_PWRENB", 0);
 	config_gpio_out(LCD_PWRENB, OMAP_PIN_OUTPUT, "LCD_PWRENB", 0);
-	config_gpio_out(AMP_SDN, OMAP_PIN_OUTPUT, "AMP_SDN", 1);
+	config_gpio_out(AMP_SD, OMAP_PIN_OUTPUT, "AMP_SD", 0);
 #if CONFIG_RC_VERSION > 1
 	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
 	config_gpio_out(HOST_CHG_EN, OMAP_PIN_OUTPUT, "HOST_CHG_EN", 0);
