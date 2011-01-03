@@ -1090,7 +1090,7 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		I2C_SDA_CTRL_PU | I2C_SCL_CTRL_PU);
 		twl_i2c_write_u8(TWL4030_MODULE_INTBR, temp, REG_GPPUPDCTR1);
 	}
-	pm_power_off = twl_poweroff;
+
 	status = add_children(pdata, id->driver_data);
 fail:
 	if (status < 0)

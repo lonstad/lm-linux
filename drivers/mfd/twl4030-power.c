@@ -346,6 +346,7 @@ void twl_poweroff(void)
 	 "PM_MASTER P1_SW_EVENTS\n",
 	 "twl4030_power", err);
 }
+EXPORT_SYMBOL(twl_poweroff);
 
 static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 {
