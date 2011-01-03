@@ -39,7 +39,9 @@ typedef enum  {
 		RC_REG_ID3 = 0x13,
 		RC_REG_RED = 0x14,
 		RC_REG_GREEN = 0x15,
-		RC_REG_BLUE = 0x16
+		RC_REG_BLUE = 0x16,
+		RC_REG_ON = 0x17,
+		RC_REG_STATUS = 0x18
 } RC_REGS;
 
 
@@ -58,8 +60,7 @@ struct rc_info {
 static DEFINE_IDR(battery_id);
 static DEFINE_MUTEX(battery_lock);
 
-static inline int rc_read_reg(struct rc_info *info, int reg, u8 *val)
-{
+static inline int rc_read_reg(struct rc_info *info, int reg, u8 *val) {
 	int ret;
 
 	ret = i2c_smbus_read_byte_data(info->client, reg);
@@ -71,6 +72,30 @@ static inline int rc_read_reg(struct rc_info *info, int reg, u8 *val)
 	*val = ret;
 	return 0;
 }
+
+static int rc_write_cmd(struct rc_info *info, int reg, u8 val) {
+	u8 status;
+	int ret = rc_read_reg(info, RC_REG_STATUS, &status);
+	if ( ret < 0 )
+		return ret;
+	else {
+		if ( status )
+			return i2c_smbus_write_byte_data(info->client, reg, val);
+		else {
+			dev_err(&info->client->dev, "BC not ready for command - aborting\n");
+			return -EAGAIN;
+		}
+
+	}
+
+
+
+}
+
+void rc_battery_say_goodbye(struct i2c_client *client) {
+	i2c_smbus_write_byte_data(client, RC_REG_ON, 0);
+}
+EXPORT_SYMBOL(rc_battery_say_goodbye);
 
 static int rc_get_temp(struct rc_info *info, int *temp)
 {
@@ -311,6 +336,8 @@ static int rc_battery_probe(struct i2c_client *client,
 	ret = rc_get_version(info, &ver);
 	if (ret)
 		return ret;
+
+	//rc_write_cmd(info, RC_REG_ON, 1);
 	dev_info(&client->dev, "Version is %x\n", ver);
 
 	return 0;
