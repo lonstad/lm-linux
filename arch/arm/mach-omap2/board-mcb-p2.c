@@ -555,13 +555,16 @@ static void mcb_evm_hecc_init(struct ti_hecc_platform_data *pdata)
  *
  * 	Init
  */
+
+
 static void __init mcb_init_irq(void)
 {
 	omap_board_config = mcb_config;
 	omap_board_config_size = ARRAY_SIZE(mcb_config);
-	omap2_init_common_hw(NULL, NULL);
+	omap2_init_common_infrastructure();
+	omap2_init_common_devices(NULL, NULL);
 	omap_init_irq();
-	//omap_gpio_init();
+
 }
 
 static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
@@ -596,11 +599,31 @@ static struct omap_board_mux board_mux[] __initdata = {
 #endif
 
 static struct omap_musb_board_data musb_board_data = {
-	.interface_type		= MUSB_INTERFACE_UTMI,
-	.mode			= MUSB_PERIPHERAL,
-	.power			= 100,
+	.interface_type		= MUSB_INTERFACE_ULPI,
+	.mode			= MUSB_OTG,
+	.power			= 500,
 	.extvbus	 	= 1,
 };
+
+static __init void mcb_musb_init(void)
+{
+	u32 devconf2;
+
+	/*
+	 * Set up USB clock/mode in the DEVCONF2 register.
+	 */
+	devconf2 = omap_ctrl_readl(AM35XX_CONTROL_DEVCONF2);
+
+	/* USB2.0 PHY reference clock is 13 MHz */
+	devconf2 &= ~(CONF2_REFFREQ | CONF2_OTGMODE | CONF2_PHY_GPIOMODE);
+	devconf2 |=  CONF2_REFFREQ_26MHZ | CONF2_SESENDEN | CONF2_VBDTCTEN
+			| CONF2_DATPOL;
+
+	omap_ctrl_writel(devconf2, AM35XX_CONTROL_DEVCONF2);
+
+	usb_musb_init(&musb_board_data);
+}
+
 
 static struct platform_device *mcb_devices[] __initdata = {
 	&mcb_buttons_device,
@@ -616,7 +639,7 @@ static void __init mcb_init(void)
 	omap_serial_init();
 	mcb_bc_init();
 	usb_ehci_init(&ehci_pdata);
-	usb_musb_init(&musb_board_data);
+
 	mcb_evm_hecc_init(&mcb_evm_hecc_pdata);
 	/* NET */
 	mcb_ethernet_init(&mcb_emac_pdata);
@@ -628,6 +651,7 @@ static void __init mcb_init(void)
 	spi_register_board_info(mcb_spi_board_info, ARRAY_SIZE(mcb_spi_board_info));
 	/* MMC */
 	omap2_hsmmc_init(mmc);
+	mcb_musb_init();
 
 }
 

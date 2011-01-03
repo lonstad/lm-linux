@@ -80,6 +80,7 @@
 #define OTG5V_EN 26
 #define OTG_OC 27
 
+#define USUS 126
 
 #define PWR_BTN 31
 
@@ -96,6 +97,7 @@
 #define USER_KEY 140
 #endif
 
+void twl_poweroff(void);
 
 static int rc_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio);
@@ -660,9 +662,25 @@ static struct platform_device rc_buttons_device = {
 	},
 };
 
+static struct platform_device rc_lcd_pdevice = {
+	.name		= "rc_lcd",
+	.id		= -1,
+};
+
+static struct omap_lcd_config rc_lcd_config __initdata = {
+	.ctrl_name	= "internal",
+};
+
+static struct omap_board_config_kernel rc_config[] __initdata = {
+	{ OMAP_TAG_LCD,		&rc_lcd_config },
+};
+
 static void __init rc_init_irq(void)
 {
-	omap2_init_common_hw(NULL, NULL);
+	//omap_board_config = rc_config;
+	//omap_board_config_size = ARRAY_SIZE(rc_config);
+	omap2_init_common_infrastructure();
+	omap2_init_common_devices(NULL, NULL);
 	omap_init_irq();
 	//omap_gpio_init();
 }
@@ -687,6 +705,7 @@ static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
 	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE3 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(CAM_STROBE, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 #else
@@ -700,6 +719,9 @@ static struct omap_musb_board_data musb_board_data = {
 	.extvbus	 	= 1,
 };
 
+void shutdown_system(void) {
+	twl_poweroff();
+}
 static void __init rc_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CUS);
@@ -711,6 +733,7 @@ static void __init rc_init(void)
 	config_gpio_out(AMP_SD, OMAP_PIN_OUTPUT, "AMP_SD", 0);
 #if CONFIG_RC_VERSION > 1
 	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
+	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 0);
 	config_gpio_out(HOST_CHG_EN, OMAP_PIN_OUTPUT, "HOST_CHG_EN", 0);
 	config_gpio_out(LAN_PWR_EN, OMAP_PIN_OUTPUT, "LAN_PWR_EN", 1);
 	config_gpio_out(RC_WLAN_NWAKEUP, OMAP_PIN_OUTPUT, "RC_WLAN_NWAKEUP", 1);
@@ -750,6 +773,7 @@ static void __init rc_init(void)
 
 	config_gpio_out(RC_LCD_LR, OMAP_PIN_OUTPUT, "lcd_lr", 1);
 	config_gpio_out(RC_LCD_UD, OMAP_PIN_OUTPUT, "lcd_ud", 0);
+	pm_power_off = shutdown_system;
 	printk(KERN_INFO "Laerdal RC v%d init done\n", CONFIG_RC_VERSION);
 }
 
