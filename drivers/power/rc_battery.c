@@ -44,6 +44,12 @@ typedef enum  {
 		RC_REG_STATUS = 0x18
 } RC_REGS;
 
+typedef enum {
+	RC_LED_MCU = 0,
+	RC_LED_DARK = 4,
+	RC_LED_LIGHT = 5,
+	RC_LED_BLINK = 7
+} RC_LED_CTL;
 
 struct rc_info;
 
@@ -79,7 +85,7 @@ static int rc_write_cmd(struct rc_info *info, int reg, u8 val) {
 	if ( ret < 0 )
 		return ret;
 	else {
-		if ( status )
+		if ( status == 0)
 			return i2c_smbus_write_byte_data(info->client, reg, val);
 		else {
 			dev_err(&info->client->dev, "BC not ready for command - aborting\n");
@@ -338,6 +344,9 @@ static int rc_battery_probe(struct i2c_client *client,
 		return ret;
 
 	//rc_write_cmd(info, RC_REG_ON, 1);
+	rc_write_cmd(info, RC_REG_RED, RC_LED_DARK);
+	rc_write_cmd(info, RC_REG_GREEN, RC_LED_LIGHT);
+	rc_write_cmd(info, RC_REG_BLUE, RC_LED_DARK);
 	dev_info(&client->dev, "Version is %x\n", ver);
 
 	return 0;
