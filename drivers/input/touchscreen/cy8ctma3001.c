@@ -310,6 +310,7 @@ static int __devinit cy8_probe(struct i2c_client *client,
 		const struct i2c_device_id *id) {
 	struct cy8 *ts;
 	int error;
+	u8 hst_mode;
 
 	printk(KERN_ALERT "Entering: %s\n",__FUNCTION__);
 
@@ -329,6 +330,18 @@ static int __devinit cy8_probe(struct i2c_client *client,
 		gpio_direction_output(ts->platform_data->gpio_on, ts->platform_data->gpio_on_pol ? 1 : 0);
 	}
 
+	error = i2c_smbus_read_byte_data(ts->client, 0);
+	if (hst_mode < 0) {
+		i2c_del_driver(&cy8_driver);
+		dev_err(&client->dev, "No I2C response");
+		return error;
+	}
+	else {
+		hst_mode = (error & 0xf8);
+		dev_info(&client->dev, "HOST_MODE = 0x%x\n", hst_mode);
+	}
+
+	i2c_smbus_write_byte_data(ts->client, 0, hst_mode);
 	/* bus-independent initialization of cy8ctma300 below */
 	error = cy8_initialize(client, ts);
 	if (error) {
