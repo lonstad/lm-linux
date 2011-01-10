@@ -512,6 +512,7 @@ static struct platform_device mcb_buttons_device = {
 	},
 };
 
+#ifdef CONFIG_CAN_TI_HECC
 /******************************************************************
  *
  * 	CAN
@@ -551,6 +552,7 @@ static void mcb_evm_hecc_init(struct ti_hecc_platform_data *pdata)
 	platform_device_register(&mcb_hecc_device);
 }
 
+#endif
 /*******************************************************************
  *
  * 	Init
@@ -640,7 +642,9 @@ static void __init mcb_init(void)
 	mcb_bc_init();
 	usb_ehci_init(&ehci_pdata);
 
+#ifdef CONFIG_CAN_TI_HECC
 	mcb_evm_hecc_init(&mcb_evm_hecc_pdata);
+#endif
 	/* NET */
 	mcb_ethernet_init(&mcb_emac_pdata);
 	/* RTC */
