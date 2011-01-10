@@ -627,7 +627,7 @@ static int __init rc_i2c_init(void)
 #endif
 
 	omap_register_i2c_bus(1, 400, rc_i2c1_boardinfo, ARRAY_SIZE(rc_i2c1_boardinfo));
-	omap_register_i2c_bus(2, 400, rc_i2c2_boardinfo, ARRAY_SIZE(rc_i2c2_boardinfo));
+	omap_register_i2c_bus(2, 100, rc_i2c2_boardinfo, ARRAY_SIZE(rc_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, rc_i2c3_boardinfo, ARRAY_SIZE(rc_i2c3_boardinfo));
 	return 0;
 }
