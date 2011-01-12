@@ -67,9 +67,7 @@ int omap_pwm_init(void);
 #define WIFI_LED_CTL_G	181
 #define WIFI_LED_CTL_B	180
 
-// Audio
-#define LINE_IN_DET	90	// Mic/line in plugged
-#define LINE_OUT_DET 91	// Audio jack connected
+
 
 // Resets
 #define LAN_PHY_RST_N 	25
@@ -182,8 +180,8 @@ static void mcb_export_gpio(void) {
 	config_gpio_out(USB_HOST_EN_N, OMAP_PIN_OUTPUT, "USB_HOST_EN_N", 0);
 	config_gpio_in(USB_OC_N, OMAP_PIN_INPUT_PULLUP, "USB_OC_N");
 
-	config_gpio_in(LINE_IN_DET, OMAP_PIN_INPUT_PULLUP, "LINE_IN_DET");
-	config_gpio_in(LINE_OUT_DET, OMAP_PIN_INPUT_PULLUP, "LINE_OUT_DET");
+	//config_gpio_in(LINE_IN_DET, OMAP_PIN_INPUT_PULLUP, "LINE_IN_DET");
+	//config_gpio_in(LINE_OUT_DET, OMAP_PIN_INPUT_PULLUP, "LINE_OUT_DET");
 
 }
 /***********************************************************************

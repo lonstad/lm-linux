@@ -9,6 +9,7 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
+#include <sound/jack.h>
 
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
@@ -21,6 +22,8 @@
 #include "../codecs/tlv320aic3105.h"
 
 #define CODEC_CLOCK 	12288000
+#define LINE_IN_DET	90	// Mic/line in plugged
+#define LINE_OUT_DET 91	// Audio jack
 
 static int mcbline_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
@@ -88,11 +91,44 @@ static struct snd_soc_ops mcbline_ops = {
 	.hw_params = mcbline_hw_params,
 };
 
+/* Headset jack */
+static struct snd_soc_jack hs_jack;
+
+/* Headset jack detection DAPM pins */
+static struct snd_soc_jack_pin hs_jack_pins[] = {
+	{
+		.pin = "Mic In",
+		.mask = SND_JACK_MICROPHONE,
+	},
+	{
+		.pin = "Line Out",
+		.mask = SND_JACK_HEADPHONE,
+	},
+};
+
+/* Headset jack detection gpios */
+static struct snd_soc_jack_gpio hs_jack_gpios[] = {
+	{
+		.gpio = LINE_IN_DET,
+		.name = "mic-gpio",
+		.report = SND_JACK_MICROPHONE,
+		.debounce_time = 200,
+		.invert = 1,
+	},
+	{
+		.gpio = LINE_OUT_DET,
+		.name = "hp-gpio",
+		.report = SND_JACK_HEADPHONE,
+		.debounce_time = 200,
+		.invert = 1,
+	},
+};
+
 /* mcbline machine dapm widgets */
 static const struct snd_soc_dapm_widget tlv320aic3105_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Line Out", NULL),
-	SND_SOC_DAPM_LINE("Line In", NULL),
-	//SND_SOC_DAPM_MIC("Mic In", NULL),
+	//SND_SOC_DAPM_LINE("Line In R", NULL),
+	SND_SOC_DAPM_MIC("Mic In", NULL),
 };
 
 static const struct snd_soc_dapm_route audio_map[] = {
@@ -100,35 +136,49 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Line Out", NULL, "HPLOUT"},
 	{"Line Out", NULL, "HPROUT"},
 
-	{"LINE1L", NULL, "Line In"},
-	{"LINE1R", NULL, "Line In"},
+	{"LINE1R", NULL, "Mic Bias 2V"},
+	{"LINE1L", NULL, "Mic Bias 2V"},
+	{"Mic Bias 2V", NULL, "Mic In"},
 };
 
 static int mcbline_aic23_init(struct snd_soc_pcm_runtime *rtd)
 {
+	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
-	/* Add am3517-evm specific widgets */
 	snd_soc_dapm_new_controls(codec, tlv320aic3105_dapm_widgets,
 				  ARRAY_SIZE(tlv320aic3105_dapm_widgets));
 
-	/* Set up davinci-evm specific audio path audio_map */
 	snd_soc_dapm_add_routes(codec, audio_map, ARRAY_SIZE(audio_map));
 
 	/* always connected */
 	snd_soc_dapm_enable_pin(codec, "Line Out");
-	snd_soc_dapm_enable_pin(codec, "Line In");
+	snd_soc_dapm_enable_pin(codec, "Mic In");
+	//snd_soc_dapm_enable_pin(codec, "Line In R");
 
 	// Disable unconnected pins
-	snd_soc_dapm_disable_pin(codec, "LLOUT");
-	snd_soc_dapm_disable_pin(codec, "RLOUT");
-	snd_soc_dapm_disable_pin(codec, "MIC3L");
-	snd_soc_dapm_disable_pin(codec, "MIC3R");
-	snd_soc_dapm_disable_pin(codec, "LINE2L");
-	snd_soc_dapm_disable_pin(codec, "LINE2R");
-	//snd_soc_dapm_enable_pin(codec, "Mic In");
+	snd_soc_dapm_nc_pin(codec, "LLOUT");
+	snd_soc_dapm_nc_pin(codec, "RLOUT");
+	snd_soc_dapm_nc_pin(codec, "MIC3L");
+	snd_soc_dapm_nc_pin(codec, "MIC3R");
+	snd_soc_dapm_nc_pin(codec, "LINE2L");
+	snd_soc_dapm_nc_pin(codec, "LINE2R");
+	snd_soc_dapm_nc_pin(codec, "LLOUT");
+	snd_soc_dapm_nc_pin(codec, "RLOUT");
+	snd_soc_dapm_nc_pin(codec, "HPLCOM");
+	snd_soc_dapm_nc_pin(codec, "HPRCOM");
 
 	snd_soc_dapm_sync(codec);
 
+	/* Headset jack detection */
+	ret = snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET, &hs_jack);
+	if (ret)
+		return ret;
+
+	ret = snd_soc_jack_add_pins(&hs_jack, ARRAY_SIZE(hs_jack_pins), hs_jack_pins);
+	if (ret)
+		return ret;
+
+	ret = snd_soc_jack_add_gpios(&hs_jack, ARRAY_SIZE(hs_jack_gpios), hs_jack_gpios);
 	return 0;
 }
 
@@ -181,6 +231,7 @@ err1:
 
 static void __exit mcbline_soc_exit(void)
 {
+	snd_soc_jack_free_gpios(&hs_jack, ARRAY_SIZE(hs_jack_gpios), hs_jack_gpios);
 	platform_device_unregister(mcbline_snd_device);
 }
 

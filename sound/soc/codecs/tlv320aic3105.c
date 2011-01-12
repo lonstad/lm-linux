@@ -468,7 +468,6 @@ static const struct snd_soc_dapm_widget aic3105_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA("Right HP Out", HPROUT_CTRL, 0, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("Right HP Com", HPRCOM_CTRL, 0, 0, NULL, 0),
 
-
 	/* Inputs to Left ADC */
 	SND_SOC_DAPM_ADC("Left ADC", "Left Capture", LINE1L_2_LADC_CTRL, 2, 0),
 	SND_SOC_DAPM_MIXER("Left PGA Mixer", SND_SOC_NOPM, 0, 0,
@@ -476,11 +475,8 @@ static const struct snd_soc_dapm_widget aic3105_dapm_widgets[] = {
 			   ARRAY_SIZE(aic3105_left_pga_mixer_controls)),
 
 
-
-
 	/* Inputs to Right ADC */
-	SND_SOC_DAPM_ADC("Right ADC", "Right Capture",
-			 LINE1R_2_RADC_CTRL, 2, 0),
+	SND_SOC_DAPM_ADC("Right ADC", "Right Capture", LINE1R_2_RADC_CTRL, 2, 0),
 	SND_SOC_DAPM_MIXER("Right PGA Mixer", SND_SOC_NOPM, 0, 0,
 			   &aic3105_right_pga_mixer_controls[0],
 			   ARRAY_SIZE(aic3105_right_pga_mixer_controls)),
