@@ -304,6 +304,7 @@ static void __init rc_flash_init(void)
 static int rc_enable_lcd(struct omap_dss_device *dssdev)
 {
 	gpio_set_value(LCD_PWRENB, 1);
+	mdelay(1);
 	gpio_set_value(LED_PWRENB, 1);
 	//gpio_set_value(BACKL_ADJ, 1);
 	return 0;
@@ -377,7 +378,7 @@ static struct omap2_hsmmc_info mmc[] = {
 	},
 	{
 		.mmc		= 2,
-		//.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_RUNTIME_PM,
+		//.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
 		.caps		= MMC_CAP_4_BIT_DATA,
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
@@ -468,43 +469,22 @@ static struct twl4030_platform_data rc_twldata = {
  * 	Other consumer/supplies
  */
 
-static struct regulator_consumer_supply rc_additional_cons[] = {
-	{
+static struct regulator_consumer_supply rc_vcc = {
 		.supply = "vcc",
-	},
-	{
-		.supply = "vcc_wlan",
-	}
 };
 
-static struct regulator_init_data vcc_reg_data = {
-	.constraints = {
-		.min_uV = 3300000,
-		.max_uV = 3300000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
-	},
-	.num_consumer_supplies = 1,
-	.consumer_supplies = &rc_additional_cons[0],
-};
-
-static struct fixed_voltage_config vcc33_config = {
-	.supply_name = "VCC33",
-	.microvolts = 3300000,
-	.enabled_at_boot = 1,
-	.enable_high = 1,
-	.gpio = RC_3V_PWREN,
-	.init_data = &vcc_reg_data,
-};
+// The power gate to WiFI
+static struct regulator_consumer_supply rc_vmmc2_supply =
+	REGULATOR_SUPPLY("vmmc", "mmci-omap-hs.1");
 
 static struct regulator_init_data vcc_wlan_reg_data = {
-	.supply_regulator = "VCC33",
+	//.supply_regulator = "VCC33",
 	.constraints = {
-		.min_uV = 3300000,
-		.max_uV = 3300000,
-		.valid_modes_mask = REGULATOR_MODE_NORMAL,
+		.valid_ops_mask	= REGULATOR_CHANGE_STATUS,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
 	},
 	.num_consumer_supplies = 1,
-	.consumer_supplies = &rc_additional_cons[1],
+	.consumer_supplies = &rc_vmmc2_supply,
 };
 
 static struct fixed_voltage_config vcc_wlan_config = {
@@ -512,38 +492,27 @@ static struct fixed_voltage_config vcc_wlan_config = {
 	.microvolts = 3300000,
 	.enabled_at_boot = 1,
 	.enable_high = 1,
+	.startup_delay = 20000,
 	.gpio = PWREN_WIFI,
 	.init_data = &vcc_wlan_reg_data,
 };
 
 
-static struct platform_device regulator_devices[] = {
-	{
-		.name = "reg-fixed-voltage",
-		.id = 1,
-		.dev = {
-			.platform_data = &vcc33_config,
-
-		},
-	},
-	{
-		.name = "reg-fixed-voltage",
-		.id = 2,
-		.dev = {
-			.platform_data = &vcc_wlan_config,
-		},
+static struct platform_device reg_wlan = {
+	.name = "reg-fixed-voltage",
+	.id = 2,
+	.dev = {
+		.platform_data = &vcc_wlan_config,
 	},
 };
 
 
 
-static int rc_twl_gpio_setup(struct device *dev,
-		unsigned gpio, unsigned ngpio)
+static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
 {
 	omap2_hsmmc_init(mmc);
-
 	rc_vmmc1_supply.dev = mmc[0].dev;
-	rc_additional_cons[1].dev = mmc[1].dev;
+	rc_vmmc2_supply.dev = mmc[1].dev;
 
 	return 0;
 }
@@ -719,18 +688,33 @@ static struct omap_musb_board_data musb_board_data = {
 	.extvbus	 	= 1,
 };
 
+void rc_battery_say_goodbye(void);
+
 void shutdown_system(void) {
+	rc_battery_say_goodbye();
 	twl_poweroff();
 }
 static void __init rc_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CUS);
-
 	config_gpio_in(PWR_BTN, OMAP_PIN_INPUT, "PWR_BTN");
+	config_gpio_out(OTG5V_EN, OMAP_PIN_OUTPUT, "OTG5V_EN", 0);
+
+	// Turn on 3.3V and delay
+	config_gpio_out(RC_3V_PWREN, OMAP_PIN_OUTPUT, "RC_3V_PWREN", 1);
+	mdelay(20);
+
+	// Configure the WiFI power gate
+	platform_device_register(&reg_wlan);
+
+	// Turn on 5V and delay
 	config_gpio_out(BST5V_PWREN, OMAP_PIN_OUTPUT, "BST5V_PWREN", 1);
+	mdelay(20);
+
 	config_gpio_out(LED_PWRENB, OMAP_PIN_OUTPUT, "LED_PWRENB", 0);
 	config_gpio_out(LCD_PWRENB, OMAP_PIN_OUTPUT, "LCD_PWRENB", 0);
 	config_gpio_out(AMP_SD, OMAP_PIN_OUTPUT, "AMP_SD", 0);
+
 #if CONFIG_RC_VERSION > 1
 	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
 	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 0);
@@ -746,13 +730,12 @@ static void __init rc_init(void)
 	config_gpio_out(RC_TOUCH_PWREN, OMAP_PIN_OUTPUT, "RC_TOUCH_PWREN", 1);
 	config_gpio_out(PHY_PWREN, OMAP_PIN_OUTPUT, "PHY_PWREN", 1);
 	config_gpio_in(RC_TOUCH_IRQ, OMAP_PIN_INPUT, "RC_TOUCH_IRQ");
-
-	config_gpio_out(OTG5V_EN, OMAP_PIN_OUTPUT, "OTG5V_EN", 0);
 	config_gpio_in(OTG_OC, OMAP_PIN_INPUT, "OTG_OC");
 
 	rc_i2c_init();
-	platform_device_register(&regulator_devices[0]);
-	platform_device_register(&regulator_devices[1]);
+	//platform_device_register(&reg_vcc);
+
+
 	config_gpio_out(RESET_WLAN, OMAP_PIN_OUTPUT, "RESET_WLAN", 0);
 	mdelay(2);
 	gpio_set_value(RESET_WLAN, 1);
