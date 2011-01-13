@@ -7,7 +7,3 @@ obj-$(CONFIG_PM_OPP)	+= opp.o
 
 ccflags-$(CONFIG_DEBUG_DRIVER) := -DDEBUG
 ccflags-$(CONFIG_PM_VERBOSE)   += -DDEBUG
-
-CFLAGS_REMOVE_runtime.o := -Os
-CFLAGS_REMOVE_wakeup.o := -Os
-CFLAGS_REMOVE_main.o := -Os

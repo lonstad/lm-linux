@@ -116,5 +116,4 @@ ifeq ($(CONFIG_HWMON_DEBUG_CHIP),y)
 EXTRA_CFLAGS += -DDEBUG
 endif
 
-CFLAGS_REMOVE_ina219.o = -Os
 
