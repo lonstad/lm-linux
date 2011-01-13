@@ -166,7 +166,7 @@ static void mcb_export_gpio(void) {
 	config_gpio_out(MCU_BOOT1, OMAP_PIN_OUTPUT, "MCU_BOOT1", 0);
 
 	config_gpio_out(PWR_LED_CTL_R, OMAP_PIN_OUTPUT, "PWR_LED_CTL_R", 0);
-	config_gpio_out(PWR_LED_CTL_G, OMAP_PIN_OUTPUT, "PWR_LED_CTL_G", 0);
+	config_gpio_out(PWR_LED_CTL_G, OMAP_PIN_OUTPUT, "PWR_LED_CTL_G", 1);
 	config_gpio_out(PWR_LED_CTL_B, OMAP_PIN_OUTPUT, "PWR_LED_CTL_B", 0);
 
 	config_gpio_out(WIFI_LED_CTL_R, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_R", 0);
@@ -468,13 +468,13 @@ void mcb_ethernet_init(struct emac_platform_data *pdata) {
 
 // TODO: Check BC implementation
 static void mcb_power_off(void) {
-	gpio_set_value(PSU_PWTBN_CTL1, 1);
-	mdelay(1);
-	gpio_set_value(PSU_PWTBN_CTL1, 0);
+	gpio_set_value(PSU_PWTBN_CTL2, 1);
+	mdelay(100);
+	gpio_set_value(PSU_PWTBN_CTL2, 0);
 }
 
 static void  __init mcb_init_power_off(void) {
-	int r = config_gpio_out(PSU_PWTBN_CTL1, OMAP_PIN_OUTPUT, "PSU_PWTBN_CTL1", 0);
+	int r = config_gpio_out(PSU_PWTBN_CTL2, OMAP_PIN_OUTPUT, "PSU_PWTBN_CTL2", 0);
 	if ( r )
 		printk(KERN_ERR "%s %s can not provide BC power off\n", __FILE__, __func__);
 	pm_power_off = mcb_power_off;
