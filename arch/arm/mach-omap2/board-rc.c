@@ -53,7 +53,7 @@
 #define RC_SMSC911X_CS      3
 #define RC_SMSC911X_IRQ    	25
 #define RC_SMSC911X_NRESET 	167
-#define RC_SMSC911X_PWREN 	99
+
 
 #define RC_TOUCH_PWREN	142
 #define RC_TOUCH_IRQ	143
@@ -86,13 +86,14 @@
 
 #if CONFIG_RC_VERSION > 1
 #define HOST_CHG_EN	24	// Enable charge from USB
-#define LAN_PWR_EN 95	// Enable LAN chip power
+#define RC_SMSC911X_PWREN 	95
 #define IUSB 94			// Enable 500 mA from USB
 
 #define RESET_WLAN	170
 #define USER_KEY 141
 
 #else
+#define RC_SMSC911X_PWREN 	99
 #define RESET_WLAN	16
 #define USER_KEY 140
 #endif
@@ -214,8 +215,8 @@ static inline void rc_init_smsc911x(void)
 		rc_smsc911x_resources[1].start = gpio_to_irq(RC_SMSC911X_IRQ);
 		rc_smsc911x_resources[1].end	  = 0;
 	}
-	config_gpio_out(RC_SMSC911X_NRESET, OMAP_PIN_OUTPUT, "eth_nreset", 1);
-	config_gpio_out(RC_SMSC911X_PWREN, OMAP_PIN_OUTPUT, "eth_pwren", 1);
+	config_gpio_out(RC_SMSC911X_NRESET, OMAP_PIN_OUTPUT, "RC_SMSC911X_NRESET", 1);
+	config_gpio_out(RC_SMSC911X_PWREN, OMAP_PIN_OUTPUT, "RC_SMSC911X_PWREN", 1);
 	udelay(200);
 
 	platform_add_devices(smsc911x_devices, ARRAY_SIZE(smsc911x_devices));
@@ -719,7 +720,6 @@ static void __init rc_init(void)
 	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
 	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 0);
 	config_gpio_out(HOST_CHG_EN, OMAP_PIN_OUTPUT, "HOST_CHG_EN", 0);
-	config_gpio_out(LAN_PWR_EN, OMAP_PIN_OUTPUT, "LAN_PWR_EN", 1);
 	config_gpio_out(RC_WLAN_NWAKEUP, OMAP_PIN_OUTPUT, "RC_WLAN_NWAKEUP", 1);
 	config_gpio_out(RC_WLAN_NPD, OMAP_PIN_OUTPUT, "RC_WLAN_NPD", 1);
 	udelay(200);
