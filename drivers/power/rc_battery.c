@@ -21,7 +21,7 @@
 #include <linux/idr.h>
 #include <linux/power_supply.h>
 #include <linux/slab.h>
-
+#include <linux/delay.h>
 
 typedef enum  {
 		RC_REG_VERSION = 0x0,
@@ -45,6 +45,11 @@ typedef enum  {
 } RC_REGS;
 
 typedef enum {
+	RC_STATE_SHUTDOWN = 0,
+	RC_STATE_STARTUP = 1,
+} RC_STATES;
+
+typedef enum {
 	RC_LED_MCU = 0,
 	RC_LED_DARK = 4,
 	RC_LED_LIGHT = 5,
@@ -63,6 +68,8 @@ struct rc_info {
 	u8 charge_status;
 };
 
+static struct rc_info unique_info;
+
 static DEFINE_IDR(battery_id);
 static DEFINE_MUTEX(battery_lock);
 
@@ -80,26 +87,27 @@ static inline int rc_read_reg(struct rc_info *info, int reg, u8 *val) {
 }
 
 static int rc_write_cmd(struct rc_info *info, int reg, u8 val) {
-	u8 status;
-	int ret = rc_read_reg(info, RC_REG_STATUS, &status);
-	if ( ret < 0 )
-		return ret;
-	else {
-		if ( status == 0)
-			return i2c_smbus_write_byte_data(info->client, reg, val);
-		else {
-			dev_err(&info->client->dev, "BC not ready for command - aborting\n");
-			return -EAGAIN;
-		}
+	u8 status = 1;
+	int retries = 10;
+	int ret;
 
+	while ( status && retries > 0) {
+		ret = rc_read_reg(info, RC_REG_STATUS, &status);
+		if ( ret < 0 )
+			return ret;
+		retries--;
+		msleep(10);
 	}
 
-
-
+	if ( retries == 0 ) {
+		dev_err(&info->client->dev, "BC not ready for command - aborting\n");
+		return -EAGAIN;
+	}
+	return i2c_smbus_write_byte_data(info->client, reg, val);
 }
 
-void rc_battery_say_goodbye(struct i2c_client *client) {
-	i2c_smbus_write_byte_data(client, RC_REG_ON, 0);
+void rc_battery_say_goodbye(void) {
+	rc_write_cmd(&unique_info, RC_REG_ON, RC_STATE_SHUTDOWN);
 }
 EXPORT_SYMBOL(rc_battery_say_goodbye);
 
@@ -288,7 +296,7 @@ static int rc_battery_remove(struct i2c_client *client)
 	idr_remove(&battery_id, info->id);
 	mutex_unlock(&battery_lock);
 
-	kfree(info);
+	//kfree(info);
 	return 0;
 }
 
@@ -313,12 +321,12 @@ static int rc_battery_probe(struct i2c_client *client,
 	if (ret < 0)
 		goto fail_id;
 
-	info = kzalloc(sizeof(*info), GFP_KERNEL);
+	info = &unique_info;
+	/* kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
 		ret = -ENOMEM;
 		goto fail_info;
-	}
-
+	} */
 	info->battery.name = kasprintf(GFP_KERNEL, "%s-%d", client->name, num);
 	if (!info->battery.name) {
 		ret = -ENOMEM;
@@ -343,7 +351,7 @@ static int rc_battery_probe(struct i2c_client *client,
 	if (ret)
 		return ret;
 
-	//rc_write_cmd(info, RC_REG_ON, 1);
+	rc_write_cmd(info, RC_REG_ON, RC_STATE_STARTUP);
 	rc_write_cmd(info, RC_REG_RED, RC_LED_DARK);
 	rc_write_cmd(info, RC_REG_GREEN, RC_LED_LIGHT);
 	rc_write_cmd(info, RC_REG_BLUE, RC_LED_DARK);
@@ -354,7 +362,7 @@ static int rc_battery_probe(struct i2c_client *client,
 fail_register:
 	kfree(info->battery.name);
 fail_name:
-	kfree(info);
+	//kfree(info);
 fail_info:
 	mutex_lock(&battery_lock);
 	idr_remove(&battery_id, num);
