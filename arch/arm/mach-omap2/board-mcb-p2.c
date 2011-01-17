@@ -54,8 +54,8 @@ int omap_pwm_init(void);
 #define RTC_IRQ_N 	55	// GPIO interrupt for RTC
 
 // BC
-#define PSU_PWTBN_CTL1	63	// TODO: not yet defined
-#define PSU_PWTBN_CTL2	64	// TODO: not yet defined
+#define PSU_PWTBN_CTL1	63	// The power button is pressed for 3s
+#define PSU_PWTBN_CTL2	64	// Shuts power when high
 #define LED_ARB			99
 #define I2C_REQ	  		100	// Master select 0 (default) is BC, 1 is omap
 #define I2C_ACK			101	// Interrupt from BC (low) TODO: Check level
@@ -159,7 +159,7 @@ static void mcb_export_gpio(void) {
 	config_gpio_in(WIFI_PD_N, OMAP_PIN_INPUT_PULLUP, "WIFI_PD_N");
 	config_gpio_out(WIFI_RST_N, OMAP_PIN_OUTPUT, "WIFI_RST_N", 0);
 	config_gpio_out(WIFI_SD, OMAP_PIN_INPUT_PULLUP, "WIFI_SD", 1);
-
+	config_gpio_in(PSU_PWTBN_CTL1, OMAP_PIN_INPUT, "PSU_PWTBN_CTL1");
 
 	config_gpio_out(PWR_MANIKIN_EN, OMAP_PIN_OUTPUT, "PWR_MANIKIN_EN", 0);
 	config_gpio_out(MCU_BOOT0, OMAP_PIN_OUTPUT, "MCU_BOOT0", 0);
@@ -236,7 +236,7 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 		I2C_BOARD_INFO("PSU", 0xF0 >> 1),
 		.type = "mcb-bc",
 	},
-#if 0
+
 	{
 		I2C_BOARD_INFO("pwrmon_adapter", 0x80 >> 1),
 		.type = "ina219",
@@ -247,7 +247,7 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 		.type = "ina219",
 		.platform_data = &system_ina219_cal,
 	},
-#endif
+
 };
 
 /*******************************************************************************
@@ -293,7 +293,7 @@ static void __init mcb_rtc_init(void) {
 static void mcb_bc_init(void) {
 	int r;
 	r = config_gpio_out(I2C_REQ, OMAP_PIN_OUTPUT, "I2C3_REQ", 1);
-	r = config_gpio_in(I2C_ACK, OMAP_PIN_OUTPUT, "I2C3_ACK");
+	r = config_gpio_in(I2C_ACK, OMAP_PIN_INPUT, "I2C3_ACK");
 	config_gpio_out(LED_ARB, OMAP_PIN_OUTPUT, "LED_ARB", 1);
 	mcb_i2c3_boardinfo[0].platform_data = NULL;
 }
@@ -312,9 +312,9 @@ static int __init mcb_i2c_init(void) {
 	omap_register_i2c_bus(1, 400, mcb_i2c1_boardinfo, ARRAY_SIZE(mcb_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, mcb_i2c2_boardinfo, ARRAY_SIZE(mcb_i2c2_boardinfo));
 	if (gpio_get_value(I2C_ACK) == 0)
-		printk(KERN_ERR "%s BC did not grant us I2C3 - using it anyway\n", __func__);
-
-	omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
+		printk(KERN_ERR "%s BC did not grant us I2C3 - \n", __func__);
+	else
+		omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
 	return 0;
 }
 
@@ -460,7 +460,6 @@ void mcb_ethernet_init(struct emac_platform_data *pdata) {
 	return ;
 }
 
-
 /*******************************************************************
  *
  * 	Power off hook
@@ -580,17 +579,9 @@ static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
-		/* MMC 2 */
-	OMAP3_MUX(SDMMC2_DAT4, OMAP_MUX_MODE1 | OMAP_PIN_OUTPUT),
-	OMAP3_MUX(SDMMC2_DAT5, OMAP_MUX_MODE1 | OMAP_PIN_OUTPUT),
-	OMAP3_MUX(SDMMC2_DAT6, OMAP_MUX_MODE1 | OMAP_PIN_OUTPUT),
-	OMAP3_MUX(SDMMC2_DAT7, OMAP_MUX_MODE1 | OMAP_PIN_INPUT),
-	OMAP3_MUX(SAD2D_MCAD25, OMAP_MUX_MODE2 | OMAP_PIN_OUTPUT),
-	OMAP3_MUX(SAD2D_MCAD28, OMAP_MUX_MODE2 | OMAP_PIN_INPUT),
-	OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
-	OMAP3_MUX(ETK_D11, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 	OMAP3_MUX(SYS_NIRQ, OMAP_MUX_MODE1 | OMAP_PIN_INPUT),
-
+	OMAP3_MUX(UART2_RTS, OMAP_MUX_MODE2 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 
 };

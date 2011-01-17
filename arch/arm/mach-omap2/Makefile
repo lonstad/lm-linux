@@ -42,7 +42,13 @@ AFLAGS_sram34xx.o			:=-Wa,-march=armv7-a
 # Pin multiplexing
 obj-$(CONFIG_SOC_OMAP2420)		+= mux2420.o
 obj-$(CONFIG_SOC_OMAP2430)		+= mux2430.o
+
+ifeq ($(CONFIG_ARCH_AM35XX),y)
+obj-$(CONFIG_ARCH_OMAP3)		+= mux35xx.o
+else
 obj-$(CONFIG_ARCH_OMAP3)		+= mux34xx.o
+endif
+
 obj-$(CONFIG_ARCH_OMAP4)		+= mux44xx.o
 
 # SMS/SDRC

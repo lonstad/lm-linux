@@ -7,11 +7,14 @@
  * published by the Free Software Foundation.
  */
 
+#ifdef CONFIG_ARCH_AM35XX
+#include "mux35xx.h"
+#else
 #include "mux2420.h"
 #include "mux2430.h"
 #include "mux34xx.h"
 #include "mux44xx.h"
-
+#endif
 #define OMAP_MUX_TERMINATOR	0xffff
 
 /* 34xx mux mode options for each pin. See TRM for options */
