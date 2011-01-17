@@ -395,8 +395,9 @@ static struct omap2_hsmmc_info mmc[] = {
  * 	Regulators in TPS65930
  */
 static struct regulator_consumer_supply rc_vmmc1_supply = {
-	.supply			= "vmmc",
+	.supply = "vmmc",
 };
+
 
 static struct regulator_consumer_supply rc_vdvi_supplies[] =
 {
@@ -491,10 +492,10 @@ static struct regulator_init_data vcc_wlan_reg_data = {
 static struct fixed_voltage_config vcc_wlan_config = {
 	.supply_name = "VCC_WLAN",
 	.microvolts = 3300000,
-	.enabled_at_boot = 1,
+	.enabled_at_boot = 0,
 	.enable_high = 1,
-	.startup_delay = 20000,
-	.gpio = PWREN_WIFI,
+	.startup_delay = 10000,
+	.gpio = RC_WLAN_NPD,
 	.init_data = &vcc_wlan_reg_data,
 };
 
@@ -507,7 +508,38 @@ static struct platform_device reg_wlan = {
 	},
 };
 
+// USB Phy
+static struct regulator_consumer_supply rc_usb_phy_supply =
+	REGULATOR_SUPPLY("hsusb0", "ehci-omap.0");
 
+static struct regulator_init_data usb_phy_reg_data = {
+	//.supply_regulator = "VCC33",
+	.constraints = {
+		.valid_ops_mask	= REGULATOR_CHANGE_STATUS,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
+	},
+	.num_consumer_supplies = 1,
+	.consumer_supplies = &rc_usb_phy_supply,
+};
+
+static struct fixed_voltage_config usb_phy_config = {
+	.supply_name = "HSUSB1_PHY",
+	.microvolts = 1800000,
+	.enabled_at_boot = 0,
+	.enable_high = 1,
+	.startup_delay = 10000,
+	.gpio = PHY_PWREN,
+	.init_data = &usb_phy_reg_data,
+};
+
+static struct platform_device reg_usb_phy = {
+	.name = "reg-fixed-voltage",
+	.id = 3,
+	.dev = {
+		.platform_data = &usb_phy_config,
+	},
+};
+/************************************************/
 
 static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
 {
@@ -708,6 +740,7 @@ static void __init rc_init(void)
 	// Configure the WiFI power gate
 	platform_device_register(&reg_wlan);
 
+	platform_device_register(&reg_usb_phy);
 	// Turn on 5V and delay
 	config_gpio_out(BST5V_PWREN, OMAP_PIN_OUTPUT, "BST5V_PWREN", 1);
 	mdelay(20);
@@ -721,14 +754,15 @@ static void __init rc_init(void)
 	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 0);
 	config_gpio_out(HOST_CHG_EN, OMAP_PIN_OUTPUT, "HOST_CHG_EN", 0);
 	config_gpio_out(RC_WLAN_NWAKEUP, OMAP_PIN_OUTPUT, "RC_WLAN_NWAKEUP", 1);
-	config_gpio_out(RC_WLAN_NPD, OMAP_PIN_OUTPUT, "RC_WLAN_NPD", 1);
+	//config_gpio_out(RC_WLAN_NPD, OMAP_PIN_OUTPUT, "RC_WLAN_NPD", 1);
+	config_gpio_out(PWREN_WIFI, OMAP_PIN_OUTPUT, "RC_WLAN_NPD", 1);
 	udelay(200);
 #else
 	config_gpio_in(RC_WLAN_NWAKEUP, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NWAKEUP");
 	config_gpio_in(RC_WLAN_NPD, OMAP_PIN_INPUT_PULLUP, "RC_WLAN_NPD");
 #endif
 	config_gpio_out(RC_TOUCH_PWREN, OMAP_PIN_OUTPUT, "RC_TOUCH_PWREN", 1);
-	config_gpio_out(PHY_PWREN, OMAP_PIN_OUTPUT, "PHY_PWREN", 1);
+	//config_gpio_out(PHY_PWREN, OMAP_PIN_OUTPUT, "PHY_PWREN", 1);
 	config_gpio_in(RC_TOUCH_IRQ, OMAP_PIN_INPUT, "RC_TOUCH_IRQ");
 	config_gpio_in(OTG_OC, OMAP_PIN_INPUT, "OTG_OC");
 
