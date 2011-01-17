@@ -78,6 +78,35 @@ static struct snd_soc_ops rc_ops = {
 	.hw_params = rc_hw_params,
 };
 
+static int rc_machine_init(struct snd_soc_pcm_runtime *rtd)
+{
+	struct snd_soc_codec *codec = rtd->codec;
+	int ret;
+
+	/* Not comnnected */
+	snd_soc_dapm_nc_pin(codec, "HSMIC");
+	snd_soc_dapm_nc_pin(codec, "CARKITMIC");
+	snd_soc_dapm_nc_pin(codec, "DIGIMIC0");
+	snd_soc_dapm_nc_pin(codec, "DIGIMIC1");
+	snd_soc_dapm_nc_pin(codec, "AUXR");
+	snd_soc_dapm_nc_pin(codec, "AUXL");
+	snd_soc_dapm_nc_pin(codec, "MAINMIC");
+	snd_soc_dapm_nc_pin(codec, "SUBMIC");
+
+	snd_soc_dapm_enable_pin(codec, "PREDRIVEL");
+	/* Some TWL4030 output pins are floating */
+	snd_soc_dapm_nc_pin(codec, "EARPIECE");
+	snd_soc_dapm_nc_pin(codec, "PREDRIVER");
+	snd_soc_dapm_nc_pin(codec, "HSOL");
+	snd_soc_dapm_nc_pin(codec, "HSOR");
+	snd_soc_dapm_nc_pin(codec, "CARKITL");
+	snd_soc_dapm_nc_pin(codec, "CARKITR");
+	snd_soc_dapm_nc_pin(codec, "HFL");
+	snd_soc_dapm_nc_pin(codec, "HFR");
+	snd_soc_dapm_nc_pin(codec, "VIBRA");
+
+	return snd_soc_dapm_sync(codec);
+}
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link rc_dai = {
 	.name = "TWL4030",
@@ -87,6 +116,7 @@ static struct snd_soc_dai_link rc_dai = {
 	.platform_name = "omap-pcm-audio",
 	.codec_name = "twl4030-codec",
 	.ops = &rc_ops,
+	.init = rc_machine_init,
 };
 
 /* Audio machine driver */
