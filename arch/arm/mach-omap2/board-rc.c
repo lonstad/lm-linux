@@ -36,15 +36,19 @@
 #include <plat/nand.h>
 #include <plat/usb.h>
 #include <linux/smsc911x.h>
-//#include <linux/input/cyttsp.h>
-#include <linux/input/cy8ctma3001.h>
+
 #include <linux/gpio_keys.h>
 #include "mux.h"
 #include "hsmmc.h"
 
 
+#define USE_MT_TOUCH
 
-
+#ifdef USE_MT_TOUCH
+#include <linux/input/cyttsp.h>
+#else
+#include <linux/input/cy8ctma3001.h>
+#endif
 
 #define G_SENSOR_INT1 156
 #define G_SENSOR_INT2 157
@@ -355,7 +359,7 @@ static struct platform_device rc_dss_device = {
 static struct platform_pwm_backlight_data rc_backlight_data = {
 	.pwm_id = 11,
 	.max_brightness = 100,
-	.dft_brightness = 70,
+	.dft_brightness = 25,
 	.pwm_period_ns = 25000,
 };
 
@@ -554,24 +558,24 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
  *
  * Touch
  */
-/*
+#ifdef USE_MT_TOUCH
 static struct cyttsp_platform_data rc_truetouch_pdata = {
-	.maxx = 1023,
-	.maxy = 767,
+	.maxy = 1023,
+	.maxx = 767,
 	.gen = CY_GEN3,
-	.use_st = true,
 	.use_mt = false,
-	.flags = REVERSE_X_FLAG | REVERSE_Y_FLAG,
+	.use_st = true,
+	.flags = REVERSE_Y_FLAG | FLIP_DATA_FLAG,
 	.use_hndshk = true,
 
 };
-*/
+#else
 static struct cy8_platform_data tc_single_data = {
 	.maxx = 767,
 	.maxy = 1023,
 	.flags =  CY8F_REVERSE_Y | CY8F_XY_AXIS_FLIPPED,
 };
-
+#endif
 
 static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 	{
@@ -585,10 +589,13 @@ static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 static struct i2c_board_info __initdata rc_i2c2_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("TrueTouch", 0x24),
-		//.type = "cyttsp-i2c",
+#ifdef USE_MT_TOUCH
+		.type = "cyttsp-i2c",
+		.platform_data = &rc_truetouch_pdata,
+#else
 		.type = "cy8ctma300",
-		//.platform_data = &rc_truetouch_pdata,
 		.platform_data = &tc_single_data,
+#endif
 	},
 #if CONFIG_RC_VERSION > 1
 	{
@@ -688,9 +695,9 @@ static void __init rc_init_irq(void)
 }
 
 static struct platform_device *rc_devices[] __initdata = {
-	&rc_dss_device,
 	&rc_backlight_device,
 	&rc_buttons_device,
+	&rc_dss_device,
 };
 
 static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
@@ -706,8 +713,14 @@ static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
 
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
-	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE3 | OMAP_PIN_OUTPUT),
-	OMAP3_MUX(CAM_STROBE, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE3 | OMAP_PIN_OUTPUT),		// Set backlight as pwm
+	OMAP3_MUX(CAM_STROBE, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),	// GPIO_126
+	OMAP3_MUX(SDMMC1_DAT4, OMAP_MUX_MODE7 | OMAP_PIN_INPUT),		// Remove gpio_126 multipath
+	OMAP3_MUX(SDMMC1_DAT5, OMAP_MUX_MODE7 | OMAP_PIN_INPUT),
+	OMAP3_MUX(SDMMC1_DAT6, OMAP_MUX_MODE7 | OMAP_PIN_INPUT),
+	OMAP3_MUX(SDMMC1_DAT7, OMAP_MUX_MODE7 | OMAP_PIN_INPUT),
+	OMAP3_MUX(CHASSIS_IDLEACK, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLUP),
+	OMAP3_MUX(CHASSIS_MSTDBY, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLUP),
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 #else
@@ -724,6 +737,10 @@ static struct omap_musb_board_data musb_board_data = {
 void rc_battery_say_goodbye(void);
 
 void shutdown_system(void) {
+	gpio_set_value(AMP_SD, 1);
+	gpio_direction_input(AMP_SD);
+	mdelay(5);
+	gpio_set_value(BST5V_PWREN, 0);
 	rc_battery_say_goodbye();
 	twl_poweroff();
 }
@@ -747,11 +764,11 @@ static void __init rc_init(void)
 
 	config_gpio_out(LED_PWRENB, OMAP_PIN_OUTPUT, "LED_PWRENB", 0);
 	config_gpio_out(LCD_PWRENB, OMAP_PIN_OUTPUT, "LCD_PWRENB", 0);
-	config_gpio_out(AMP_SD, OMAP_PIN_OUTPUT, "AMP_SD", 0);
+	config_gpio_out(AMP_SD, OMAP_PIN_OUTPUT, "AMP_SD", 1);
 
 #if CONFIG_RC_VERSION > 1
 	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
-	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 0);
+	config_gpio_out(USUS, OMAP_PIN_OUTPUT, "USUS", 1);
 	config_gpio_out(HOST_CHG_EN, OMAP_PIN_OUTPUT, "HOST_CHG_EN", 0);
 	config_gpio_out(RC_WLAN_NWAKEUP, OMAP_PIN_OUTPUT, "RC_WLAN_NWAKEUP", 1);
 	//config_gpio_out(RC_WLAN_NPD, OMAP_PIN_OUTPUT, "RC_WLAN_NPD", 1);

@@ -97,7 +97,7 @@
 /* undef for production use */
 /*
  */
-#define CY_USE_DEBUG
+#undef CY_USE_DEBUG
 
 /* undef for irq use; use this define in the board configuration file */
 /*
