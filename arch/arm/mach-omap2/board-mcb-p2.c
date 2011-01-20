@@ -173,8 +173,8 @@ static void mcb_export_gpio(void) {
 	config_gpio_out(WIFI_LED_CTL_G, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_G", 0);
 	config_gpio_out(WIFI_LED_CTL_B, OMAP_PIN_OUTPUT, "WIFI_LED_CTL_B", 0);
 
-	//config_gpio_out(CPU2MCU_RST, OMAP_PIN_OUTPUT, "CPU2MCU_RST", 0);
-	config_gpio_in(CPU2MCU_RST, OMAP_PIN_INPUT_PULLUP, "CPU2MCU_RST");	// TODO: Should become output
+	config_gpio_out(CPU2MCU_RST, OMAP_PIN_OUTPUT, "CPU2MCU_RST", 0);
+	//config_gpio_in(CPU2MCU_RST, OMAP_PIN_INPUT_PULLUP, "CPU2MCU_RST");	// TODO: Should become output
 	config_gpio_out(AC5W_SD_N, OMAP_PIN_OUTPUT, "AC5W_SD_N", 0);
 	config_gpio_out(UART4_SEL, OMAP_PIN_OUTPUT, "UART4_SEL", 1);
 	config_gpio_out(USB_HOST_EN_N, OMAP_PIN_OUTPUT, "USB_HOST_EN_N", 0);
