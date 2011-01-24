@@ -42,7 +42,7 @@
 #include "hsmmc.h"
 
 
-#define USE_MT_TOUCH
+#undef USE_MT_TOUCH
 
 #ifdef USE_MT_TOUCH
 #include <linux/input/cyttsp.h>
@@ -62,7 +62,7 @@
 #define RC_TOUCH_PWREN	142
 #define RC_TOUCH_IRQ	143
 
-#define AMP_SD	158
+#define AMP_SD	158		// Handled in SOC file
 
 #define RC_WLAN_NWAKEUP 173
 #define RC_WLAN_NPD		174
@@ -737,9 +737,6 @@ static struct omap_musb_board_data musb_board_data = {
 void rc_battery_say_goodbye(void);
 
 void shutdown_system(void) {
-	gpio_set_value(AMP_SD, 1);
-	gpio_direction_input(AMP_SD);
-	mdelay(5);
 	gpio_set_value(BST5V_PWREN, 0);
 	rc_battery_say_goodbye();
 	twl_poweroff();
@@ -764,7 +761,7 @@ static void __init rc_init(void)
 
 	config_gpio_out(LED_PWRENB, OMAP_PIN_OUTPUT, "LED_PWRENB", 0);
 	config_gpio_out(LCD_PWRENB, OMAP_PIN_OUTPUT, "LCD_PWRENB", 0);
-	config_gpio_out(AMP_SD, OMAP_PIN_OUTPUT, "AMP_SD", 1);
+
 
 #if CONFIG_RC_VERSION > 1
 	config_gpio_out(IUSB, OMAP_PIN_OUTPUT, "IUSB", 0);
