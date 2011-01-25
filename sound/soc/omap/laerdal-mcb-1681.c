@@ -102,22 +102,23 @@ static const struct snd_soc_dapm_route audio_map[] = {
 static int mcb1681_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_codec *codec = rtd->codec;
-	snd_soc_dapm_new_controls(codec, soc_pcm1681_dapm_widgets,
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	snd_soc_dapm_new_controls(dapm, soc_pcm1681_dapm_widgets,
 				  ARRAY_SIZE(soc_pcm1681_dapm_widgets));
 	/* Set up davinci-evm specific audio path audio_map */
-	snd_soc_dapm_add_routes(codec, audio_map, ARRAY_SIZE(audio_map));
+	snd_soc_dapm_add_routes(dapm, audio_map, ARRAY_SIZE(audio_map));
 
 	/* always connected */
-	snd_soc_dapm_enable_pin(codec, "OUT1");
-	snd_soc_dapm_enable_pin(codec, "OUT2");
-	snd_soc_dapm_enable_pin(codec, "OUT3");
-	snd_soc_dapm_enable_pin(codec, "OUT4");
-	snd_soc_dapm_enable_pin(codec, "OUT5");
-	snd_soc_dapm_enable_pin(codec, "OUT6");
-	snd_soc_dapm_enable_pin(codec, "OUT7");
-	snd_soc_dapm_enable_pin(codec, "OUT8");
+	snd_soc_dapm_enable_pin(dapm, "OUT1");
+	snd_soc_dapm_enable_pin(dapm, "OUT2");
+	snd_soc_dapm_enable_pin(dapm, "OUT3");
+	snd_soc_dapm_enable_pin(dapm, "OUT4");
+	snd_soc_dapm_enable_pin(dapm, "OUT5");
+	snd_soc_dapm_enable_pin(dapm, "OUT6");
+	snd_soc_dapm_enable_pin(dapm, "OUT7");
+	snd_soc_dapm_enable_pin(dapm, "OUT8");
 
-	snd_soc_dapm_sync(codec);
+	snd_soc_dapm_sync(dapm);
 
 	return 0;
 }

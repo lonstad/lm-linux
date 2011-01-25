@@ -221,7 +221,7 @@ static int snd_soc_dapm_put_volsw_aic3105(struct snd_kcontrol *kcontrol,
 
 	if (snd_soc_test_bits(widget->codec, reg, val_mask, val)) {
 		/* find dapm widget path assoc with kcontrol */
-		list_for_each_entry(path, &widget->codec->dapm_paths, list) {
+		list_for_each_entry(path, &widget->dapm->card->paths, list) {
 			if (path->kcontrol != kcontrol)
 				continue;
 
@@ -237,7 +237,7 @@ static int snd_soc_dapm_put_volsw_aic3105(struct snd_kcontrol *kcontrol,
 		}
 
 		if (found)
-			snd_soc_dapm_sync(widget->codec);
+			snd_soc_dapm_sync(&widget->codec->dapm);
 	}
 
 	ret = snd_soc_update_bits(widget->codec, reg, val_mask, val);
@@ -605,11 +605,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 static int aic3105_add_widgets(struct snd_soc_codec *codec)
 {
-	snd_soc_dapm_new_controls(codec, aic3105_dapm_widgets,
+	snd_soc_dapm_new_controls(&codec->dapm, aic3105_dapm_widgets,
 				  ARRAY_SIZE(aic3105_dapm_widgets));
 
 	/* set up audio path interconnects */
-	snd_soc_dapm_add_routes(codec, intercon, ARRAY_SIZE(intercon));
+	snd_soc_dapm_add_routes(&codec->dapm, intercon, ARRAY_SIZE(intercon));
 
 	return 0;
 }
@@ -897,7 +897,7 @@ static int aic3105_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_ON:
 		break;
 	case SND_SOC_BIAS_PREPARE:
-		if (codec->bias_level == SND_SOC_BIAS_STANDBY &&
+		if (codec->dapm.bias_level == SND_SOC_BIAS_STANDBY &&
 		    aic3105->master) {
 			/* enable pll */
 			reg = snd_soc_read(codec, AIC3105_PLL_PROGA_REG);
@@ -907,7 +907,7 @@ static int aic3105_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_STANDBY:
 		if (!aic3105->power)
 			aic3105_set_power(codec, 1);
-		if (codec->bias_level == SND_SOC_BIAS_PREPARE &&
+		if (codec->dapm.bias_level == SND_SOC_BIAS_PREPARE &&
 		    aic3105->master) {
 			/* disable pll */
 			reg = snd_soc_read(codec, AIC3105_PLL_PROGA_REG);
@@ -919,7 +919,7 @@ static int aic3105_set_bias_level(struct snd_soc_codec *codec,
 			aic3105_set_power(codec, 0);
 		break;
 	}
-	codec->bias_level = level;
+	codec->dapm.bias_level = level;
 
 	return 0;
 }
@@ -1179,7 +1179,7 @@ static int aic3105_probe(struct snd_soc_codec *codec)
 
 	codec->control_data = aic3105->control_data;
 	aic3105->codec = codec;
-	codec->idle_bias_off = 1;
+	codec->dapm.idle_bias_off = 1;
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, aic3105->control_type);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);

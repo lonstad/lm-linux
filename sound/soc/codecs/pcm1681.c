@@ -204,10 +204,10 @@ static unsigned int pcm1681_read(struct snd_soc_codec *codec, unsigned int reg)
 
 static int pcm1681_add_widgets(struct snd_soc_codec *codec)
 {
-	snd_soc_dapm_new_controls(codec, pcm1681_dapm_widgets,
+	snd_soc_dapm_new_controls(&codec->dapm, pcm1681_dapm_widgets,
 				  ARRAY_SIZE(pcm1681_dapm_widgets));
 
-	snd_soc_dapm_add_routes(codec, intercon, ARRAY_SIZE(intercon));
+	snd_soc_dapm_add_routes(&codec->dapm, intercon, ARRAY_SIZE(intercon));
 
 	return 0;
 }
@@ -335,7 +335,7 @@ static int pcm1681_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_PREPARE:
 		break;
 	case SND_SOC_BIAS_STANDBY:
-		if (codec->bias_level == SND_SOC_BIAS_OFF) {
+		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
 			ret = regulator_bulk_enable(ARRAY_SIZE(pcm1681->supplies),
 						    pcm1681->supplies);
 			if (ret != 0)
@@ -360,7 +360,7 @@ static int pcm1681_set_bias_level(struct snd_soc_codec *codec,
 				       pcm1681->supplies);
 		break;
 	}
-	codec->bias_level = level;
+	codec->dapm.bias_level = level;
 	return 0;
 }
 
@@ -428,7 +428,7 @@ static int pcm1681_probe(struct snd_soc_codec *codec)
 
 	codec->control_data = pcm1681->control_data;
 	pcm1681->codec = codec;
-	codec->idle_bias_off = 1;
+	codec->dapm.idle_bias_off = 1;
 #if 0
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, pcm1681->control_type);
 	if (ret != 0) {

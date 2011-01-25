@@ -145,29 +145,30 @@ static int mcbline_aic23_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
 	struct snd_soc_codec *codec = rtd->codec;
-	snd_soc_dapm_new_controls(codec, tlv320aic3105_dapm_widgets,
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	snd_soc_dapm_new_controls(dapm, tlv320aic3105_dapm_widgets,
 				  ARRAY_SIZE(tlv320aic3105_dapm_widgets));
 
-	snd_soc_dapm_add_routes(codec, audio_map, ARRAY_SIZE(audio_map));
+	snd_soc_dapm_add_routes(dapm, audio_map, ARRAY_SIZE(audio_map));
 
 	/* always connected */
-	snd_soc_dapm_enable_pin(codec, "Line Out");
-	snd_soc_dapm_enable_pin(codec, "Mic In");
+	snd_soc_dapm_enable_pin(dapm, "Line Out");
+	snd_soc_dapm_enable_pin(dapm, "Mic In");
 	//snd_soc_dapm_enable_pin(codec, "Line In R");
 
 	// Disable unconnected pins
-	snd_soc_dapm_nc_pin(codec, "LLOUT");
-	snd_soc_dapm_nc_pin(codec, "RLOUT");
-	snd_soc_dapm_nc_pin(codec, "MIC3L");
-	snd_soc_dapm_nc_pin(codec, "MIC3R");
-	snd_soc_dapm_nc_pin(codec, "LINE2L");
-	snd_soc_dapm_nc_pin(codec, "LINE2R");
-	snd_soc_dapm_nc_pin(codec, "LLOUT");
-	snd_soc_dapm_nc_pin(codec, "RLOUT");
-	snd_soc_dapm_nc_pin(codec, "HPLCOM");
-	snd_soc_dapm_nc_pin(codec, "HPRCOM");
+	snd_soc_dapm_nc_pin(dapm, "LLOUT");
+	snd_soc_dapm_nc_pin(dapm, "RLOUT");
+	snd_soc_dapm_nc_pin(dapm, "MIC3L");
+	snd_soc_dapm_nc_pin(dapm, "MIC3R");
+	snd_soc_dapm_nc_pin(dapm, "LINE2L");
+	snd_soc_dapm_nc_pin(dapm, "LINE2R");
+	snd_soc_dapm_nc_pin(dapm, "LLOUT");
+	snd_soc_dapm_nc_pin(dapm, "RLOUT");
+	snd_soc_dapm_nc_pin(dapm, "HPLCOM");
+	snd_soc_dapm_nc_pin(dapm, "HPRCOM");
 
-	snd_soc_dapm_sync(codec);
+	snd_soc_dapm_sync(dapm);
 
 	/* Headset jack detection */
 	ret = snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET, &hs_jack);
