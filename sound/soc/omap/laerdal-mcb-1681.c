@@ -17,7 +17,8 @@
 
 #include "../codecs/pcm1681.h"
 
-#define CODEC_CLOCK 	12288000
+//#define CODEC_CLOCK 	12288000
+#define CODEC_CLOCK 	4096000
 
 static int mcb1681_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
@@ -30,15 +31,15 @@ static int mcb1681_hw_params(struct snd_pcm_substream *substream,
 	unsigned ch = params_channels(params);
 	unsigned fmt = params_format(params);
 
-	if ((fmt == SNDRV_PCM_FORMAT_S24_LE || fmt == SNDRV_PCM_FORMAT_S32_LE) && ch == 8) {
+	if ((fmt == SNDRV_PCM_FORMAT_S24_LE || fmt == SNDRV_PCM_FORMAT_S32_LE) && ch == 8 && params_rate(params) == 16000) {
 		fmt_dai = SND_SOC_DAIFMT_TDM32_I2S | SND_SOC_DAIFMT_NB_IF | SND_SOC_DAIFMT_CBS_CFS;
 		fmt_cpu = SND_SOC_DAIFMT_TDM32_I2S | SND_SOC_DAIFMT_NB_IF | SND_SOC_DAIFMT_CBS_CFS;
 	}
 	else {
-		printk(KERN_WARNING "%s: Invalid format %d or channels %d\n", __func__, fmt, ch);
+		printk(KERN_WARNING "%s: Invalid format %d or channels %d or rate %d\n", __func__, fmt, ch, params_rate(params));
 		return -EINVAL;
 	}
-
+	printk(KERN_INFO "%s rate is %d\n", __func__, params_rate(params));
 	/* Set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, fmt_dai);
 	if (ret < 0) {

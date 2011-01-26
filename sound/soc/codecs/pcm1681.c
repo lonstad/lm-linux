@@ -365,7 +365,7 @@ static int pcm1681_set_bias_level(struct snd_soc_codec *codec,
 }
 
 
-#define PCM1681_RATES SNDRV_PCM_RATE_48000
+#define PCM1681_RATES SNDRV_PCM_RATE_16000
 
 #define PCM1681_FORMATS (SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 

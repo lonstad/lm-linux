@@ -21,7 +21,8 @@
 
 #include "../codecs/tlv320aic3105.h"
 
-#define CODEC_CLOCK 	12288000
+//#define CODEC_CLOCK 	12288000
+#define CODEC_CLOCK 	4096000
 #define LINE_IN_DET	90	// Mic/line in plugged
 #define LINE_OUT_DET 91	// Audio jack
 

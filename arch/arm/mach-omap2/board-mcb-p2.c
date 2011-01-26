@@ -255,6 +255,13 @@ static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
  * 	SPI
  */
 
+static struct pll1708 pll1708_private = {
+	.freq = PLL1708_FS_32KHZ,
+	.sr = PLL1708_SR_HALF,
+
+};
+
+
 static struct omap2_mcspi_device_config mcb_mcspi_config = {
 	.turbo_mode	= 0,
 	.single_channel	= 1,	/* 0: slave, 1: master */
@@ -267,6 +274,7 @@ static struct spi_board_info mcb_spi_board_info[] __initdata = {
 		.chip_select		= 0,
 		.max_speed_hz		= 1000000,
 		.controller_data	= &mcb_mcspi_config,
+		.platform_data 		= &pll1708_private,
 	}
 };
 

@@ -488,8 +488,8 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		framesize = (mcbsp_data->in_freq / div) / params_rate(params);
 
 		if (framesize < wlen * channels) {
-			printk(KERN_ERR "%s: not enough bandwidth for desired rate and "
-					"channels\n", __func__);
+			printk(KERN_ERR "%s: not enough bandwidth for desired rate %d and "
+					"channels %d\n", __func__, params_rate(params), channels);
 			return -EINVAL;
 		}
 	} else

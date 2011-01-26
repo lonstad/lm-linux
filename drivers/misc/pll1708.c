@@ -78,19 +78,20 @@ static int __devinit pll1708_probe(struct spi_device *spi)
 	if (ret < 0)
 		return ret;
 
-	ts = kzalloc(sizeof(struct pll1708), GFP_KERNEL);
-	if (!ts)
-		return -ENOMEM;
+	if (!spi->dev.platform_data) {
+		ts = kzalloc(sizeof(struct pll1708), GFP_KERNEL);
+		if (!ts)
+			return -ENOMEM;
 
-	// ts->read = pll1708_spi_read;
-	//ts->write = pll1708_spi_write;
+		dev_set_drvdata(&spi->dev, ts);
+		ts->freq = PLL1708_FS_48KHZ;
+		ts->sr = PLL1708_SR_STANDARD;
+		dev_notice(&spi->dev, "Using default data\n");
+	}
+	else
+		ts = spi->dev.platform_data;
 	ts->dev = &spi->dev;
-	dev_set_drvdata(&spi->dev, ts);
-	ts->freq = PLL1708_FS_48KHZ;
-	ts->sr = PLL1708_SR_STANDARD;
-	ts->cfg1 = 1;
-
-	pll1708_spi_write(ts->dev, 0, SCKO1_MASK | SCKO2_MASK | (ts->freq) | (ts->sr << SR_SHIFT));
+	pll1708_spi_write(ts->dev, 0, SCKO2_MASK | (ts->freq) | (ts->sr << SR_SHIFT));
 	pll1708_spi_write(ts->dev, 1, CFG1_MASK);
 	return 0;
 }
