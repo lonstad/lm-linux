@@ -54,8 +54,10 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
 
 
 	tick_rate = clk_get_rate(omap_dm_timer_get_fclk(pwm->gpt));
+#if 0
 	printk(KERN_INFO "%s %s with timer #%d, tick_rate = %d, duty_ns=%d period_ns=%d\n",
 			__FILE__, __func__, pwm->pwm_id, tick_rate, duty_ns, period_ns);
+#endif
 	period = period_ns/(1000000000/tick_rate);
 	period_on = duty_ns/(1000000000/tick_rate);
 
