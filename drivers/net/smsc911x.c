@@ -598,7 +598,9 @@ static int smsc911x_phy_reset(struct smsc911x_data *pdata)
 	* its reset when BMCR_RESET is cleared. Specs say 256 uS is
 	* enough delay but using 1ms here to be safe */
 	msleep(1);
-
+#if defined(CONFIG_MACH_RC)
+	smsc911x_mii_write(phy_dev->bus, phy_dev->addr, MII_TPISTATUS, 0xC000);
+#endif
 	return 0;
 }
 
