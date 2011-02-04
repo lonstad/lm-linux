@@ -700,5 +700,9 @@ config TOUCHSCREEN_CY8C340
 config TOUCHSCREEN_CY8C300
 	tristate "Cypress Singletouch driver"
 	depends on I2C
+	
+config TOUCHSCREEN_EDT
+    tristate "EDT Multitouch driver"
+    depends on I2C
 		
 endif

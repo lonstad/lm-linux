@@ -206,6 +206,11 @@ config RC_VERSION
     int "Version Num"
     depends on MACH_RC
     default 2
+    
+config RC_EDT_TOUCH
+    bool "EDT Touch"
+    depends on MACH_RC
+    select TOUCHSCREEN_EDT
 	
 config MACH_MCB
 	bool "Laerdal MCB"

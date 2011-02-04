@@ -44,10 +44,14 @@
 
 #undef USE_MT_TOUCH
 
+#ifdef CONFIG_RC_EDT_TOUCH
+#include <linux/ft5x0x_ts.h>
+#else
 #ifdef USE_MT_TOUCH
 #include <linux/input/cyttsp.h>
 #else
 #include <linux/input/cy8ctma3001.h>
+#endif
 #endif
 
 #define G_SENSOR_INT1 156
@@ -161,8 +165,8 @@ static int config_gpio_out(int gpio_pin, int gpio_pin_type, const char* name, in
 
 static struct smsc911x_platform_config rc_smsc911x_config = {
 	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
-	.irq_type	= SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-	.flags		= SMSC911X_USE_32BIT ,
+	.irq_type	= SMSC911X_IRQ_TYPE_PUSH_PULL,
+	.flags		= SMSC911X_USE_32BIT | SMSC911X_FORCE_INTERNAL_PHY ,
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 static struct resource rc_smsc911x_resources[] = {
@@ -558,6 +562,9 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
  *
  * Touch
  */
+#ifdef CONFIG_RC_EDT_TOUCH
+
+#else
 #ifdef USE_MT_TOUCH
 static struct cyttsp_platform_data rc_truetouch_pdata = {
 	.maxy = 1023,
@@ -576,6 +583,7 @@ static struct cy8_platform_data tc_single_data = {
 	.flags =  CY8F_REVERSE_Y | CY8F_XY_AXIS_FLIPPED,
 };
 #endif
+#endif
 
 static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 	{
@@ -587,6 +595,13 @@ static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 };
 
 static struct i2c_board_info __initdata rc_i2c2_boardinfo[] = {
+#ifdef CONFIG_RC_EDT_TOUCH
+	{
+			I2C_BOARD_INFO("EDTTouch", 0x38),
+			.type = FT5X0X_NAME,
+
+	},
+#else
 	{
 		I2C_BOARD_INFO("TrueTouch", 0x24),
 #ifdef USE_MT_TOUCH
@@ -597,6 +612,8 @@ static struct i2c_board_info __initdata rc_i2c2_boardinfo[] = {
 		.platform_data = &tc_single_data,
 #endif
 	},
+
+#endif
 #if CONFIG_RC_VERSION > 1
 	{
 		I2C_BOARD_INFO("rc-bat1", 0x34),
@@ -627,13 +644,13 @@ static int __init rc_i2c_init(void)
 
 	res = config_gpio_in(G_SENSOR_INT2, OMAP_PIN_INPUT_PULLUP, "g_sensor_int2");
 
-#if 1
+
 	if ( gpio_is_valid(RC_TOUCH_IRQ) )
 	{
 		rc_i2c2_boardinfo[0].irq = gpio_to_irq(RC_TOUCH_IRQ);
 		printk(KERN_INFO "%s: Got IRQ %d for RC_TOUCH_IRQ\n", __func__, rc_i2c2_boardinfo[0].irq);
 	}
-#endif
+
 
 	omap_register_i2c_bus(1, 400, rc_i2c1_boardinfo, ARRAY_SIZE(rc_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 100, rc_i2c2_boardinfo, ARRAY_SIZE(rc_i2c2_boardinfo));
