@@ -98,9 +98,18 @@ config SND_OMAP_SOC_LAERDAL_MCB_1681
 	  Say Y if you want to add support for PCM1681 audio on the MCB.
 	  
 config SND_OMAP_SOC_LAERDAL_MCB
-	tristate "Line Audio support Leardal MCB"
+    tristate "Stereo audio codec on Laerdal BU"
+    depends on SND_OMAP_SOC && MACH_MCB && I2C
+    select SND_SOC_TLV320AIC3105
+    select SND_OMAP_SOC_MCBSP
+    help
+      Say Y if you want to add support for PCM1681 audio on the MCB.
+	  
+config SND_OMAP_SOC_LAERDAL_BU
+	tristate "Audio support Leardal Base Unit"
 	depends on SND_OMAP_SOC && MACH_MCB && I2C
 	select SND_OMAP_SOC_MCBSP
+	select SND_SOC_PCM1681
 	select SND_SOC_TLV320AIC3105
 	help
 	  Say Y if you want to add support for Line audio on the MCB.
