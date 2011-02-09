@@ -287,7 +287,7 @@ static DECLARE_TLV_DB_SCALE(adc_tlv, 0, 50, 0);
  * value 100 and -58.5 dB (actual is -78.3 dB) for register value 117.
  */
 static DECLARE_TLV_DB_SCALE(output_stage_tlv, -5900, 50, 1);
-static DECLARE_TLV_DB_SCALE(output_stage_gain, 0, 1, 0);
+static DECLARE_TLV_DB_SCALE(output_stage_gain, 0, 100, 0);
 
 static const struct snd_kcontrol_new aic3105_snd_controls[] = {
 	/* Output */
@@ -345,13 +345,13 @@ static const struct snd_kcontrol_new aic3105_snd_controls[] = {
 	 * Note: enable Automatic input Gain Controller with care. It can
 	 * adjust PGA to max value when ADC is on and will never go back.
 	*/
-	SOC_DOUBLE_R("AGC Switch", LAGC_CTRL_A, RAGC_CTRL_A, 7, 0x01, 0),
+	SOC_DOUBLE_R("AGC Capture Switch", LAGC_CTRL_A, RAGC_CTRL_A, 7, 0x01, 0),
 
 	/* Input */
 	SOC_DOUBLE_R_TLV("PGA Capture Volume", LADC_VOL, RADC_VOL, 0, 119, 0, adc_tlv),
 	SOC_DOUBLE_R("PGA Capture Switch", LADC_VOL, RADC_VOL, 7, 0x01, 1),
 
-	SOC_ENUM("ADC HPF Cut-off", aic3105_enum[ADC_HPF_ENUM]),
+	SOC_ENUM("ADC Capture HPF Cut-off", aic3105_enum[ADC_HPF_ENUM]),
 };
 
 /* Left DAC Mux */
@@ -1020,6 +1020,8 @@ static int aic3105_init(struct snd_soc_codec *codec)
 	snd_soc_write(codec, DACL1_2_LLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
 	snd_soc_write(codec, DACR1_2_RLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
 
+	snd_soc_write(codec, HPOUT_POP_REDUCTION, 0x4C);
+
 	/* unmute all outputs */
 	reg = aic3105_read_reg_cache(codec, LLOPM_CTRL);
 	snd_soc_write(codec, LLOPM_CTRL, reg | UNMUTE);
@@ -1103,7 +1105,6 @@ static int aic3105_i2c_probe(struct i2c_client *i2c,
 	struct aic3105_pdata *pdata = i2c->dev.platform_data;
 	struct aic3105_priv *aic3105;
 	int ret;
-	const struct i2c_device_id *tbl;
 
 	aic3105 = kzalloc(sizeof(struct aic3105_priv), GFP_KERNEL);
 	if (aic3105 == NULL) {
