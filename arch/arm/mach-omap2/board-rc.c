@@ -161,7 +161,7 @@ static int config_gpio_out(int gpio_pin, int gpio_pin_type, const char* name, in
  * 	Ethernet
  */
 
-
+#ifdef CONFIG_SMSC911X
 
 static struct smsc911x_platform_config rc_smsc911x_config = {
 	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
@@ -229,6 +229,8 @@ static inline void rc_init_smsc911x(void)
 
 	platform_add_devices(smsc911x_devices, ARRAY_SIZE(smsc911x_devices));
 }
+
+#endif
 
 #ifdef SUPPORT_NAND
 /****************************************************************************
@@ -305,6 +307,8 @@ static void __init rc_flash_init(void)
 }
 
 #endif
+
+#ifdef CONFIG_OMAP2_DSS
 /******************************************************************
  *
  * 	DSS
@@ -353,8 +357,10 @@ static struct platform_device rc_dss_device = {
 	},
 };
 
+#endif
 
 
+#ifdef CONFIG_BACKLIGHT_PWM
 /*****************************************************************
  *
  * 	Backlight
@@ -374,6 +380,10 @@ static struct platform_device rc_backlight_device = {
 		.platform_data = &rc_backlight_data,
 	},
 };
+
+#endif
+
+
 /******************************************************************
  *
  * 	MMC
@@ -385,6 +395,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 	},
+#ifdef CONFIG_LIBERTAS
 	{
 		.mmc		= 2,
 		//.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
@@ -394,6 +405,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.transceiver	= true,
 		.ocr_mask	= 0x00100000,	/* 3.3V */
 	},
+#endif
 	{}	/* Terminator */
 };
 
@@ -553,7 +565,9 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
 {
 	omap2_hsmmc_init(mmc);
 	rc_vmmc1_supply.dev = mmc[0].dev;
+#ifdef CONFIG_LIBERTAS
 	rc_vmmc2_supply.dev = mmc[1].dev;
+#endif
 
 	return 0;
 }
@@ -562,28 +576,15 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
  *
  * Touch
  */
-#ifdef CONFIG_RC_EDT_TOUCH
 
-#else
-#ifdef USE_MT_TOUCH
-static struct cyttsp_platform_data rc_truetouch_pdata = {
-	.maxy = 1023,
-	.maxx = 767,
-	.gen = CY_GEN3,
-	.use_mt = false,
-	.use_st = true,
-	.flags = REVERSE_Y_FLAG | FLIP_DATA_FLAG,
-	.use_hndshk = true,
-
-};
-#else
+#ifdef CONFIG_TOUCHSCREEN_CY8C300
 static struct cy8_platform_data tc_single_data = {
 	.maxx = 767,
 	.maxy = 1023,
 	.flags =  CY8F_REVERSE_Y | CY8F_XY_AXIS_FLIPPED,
 };
 #endif
-#endif
+
 
 static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 	{
@@ -601,18 +602,14 @@ static struct i2c_board_info __initdata rc_i2c2_boardinfo[] = {
 			.type = FT5X0X_NAME,
 
 	},
-#else
+#endif
+#if CONFIG_TOUCHSCREEN_CY8C300
 	{
 		I2C_BOARD_INFO("TrueTouch", 0x24),
-#ifdef USE_MT_TOUCH
-		.type = "cyttsp-i2c",
-		.platform_data = &rc_truetouch_pdata,
-#else
+
 		.type = "cy8ctma300",
 		.platform_data = &tc_single_data,
-#endif
 	},
-
 #endif
 #if CONFIG_RC_VERSION > 1
 	{
@@ -712,9 +709,13 @@ static void __init rc_init_irq(void)
 }
 
 static struct platform_device *rc_devices[] __initdata = {
+#ifdef CONFIG_BACKLIGHT_PWM
 	&rc_backlight_device,
+#endif
 	&rc_buttons_device,
+#ifdef CONFIG_OMAP2_DSS
 	&rc_dss_device,
+#endif
 };
 
 static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
@@ -744,12 +745,14 @@ static struct omap_board_mux board_mux[] __initdata = {
 #define board_mux	NULL
 #endif
 
+#ifdef CONFIG_USB_MUSB_HDRC
 static struct omap_musb_board_data musb_board_data = {
 	.interface_type		= MUSB_INTERFACE_ULPI,
 	.mode			= MUSB_OTG,
 	.power			= 100,
 	.extvbus	 	= 1,
 };
+#endif
 
 void rc_battery_say_goodbye(void);
 
@@ -806,14 +809,22 @@ static void __init rc_init(void)
 	gpio_set_value(RESET_WLAN, 1);
 	platform_add_devices(rc_devices, ARRAY_SIZE(rc_devices));
 	omap_serial_init();
+
 #ifdef SUPPORT_NAND
 	rc_flash_init();
 #endif
+
+#ifdef CONFIG_USB_MUSB_HDRC
 	usb_musb_init(&musb_board_data);
-#if CONFIG_RC_VERSION > 1
+#endif
+
+#if defined(CONFIG_USB_EHCI_HCD) && CONFIG_RC_VERSION > 1
 	usb_ehci_init(&rc_ehci_pdata);
 #endif
+
+#ifdef CONFIG_SMSC911X
 	rc_init_smsc911x();
+#endif
 
 	/* Ensure SDRC pins are mux'd for self-refresh */
 	omap_mux_init_signal("sdrc_cke0", OMAP_PIN_OUTPUT);
