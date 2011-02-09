@@ -41,7 +41,7 @@
 #include "mux.h"
 #include "hsmmc.h"
 
-
+#define CONFIG_RC_WIFI
 #undef USE_MT_TOUCH
 
 #ifdef CONFIG_RC_EDT_TOUCH
@@ -395,7 +395,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 	},
-#ifdef CONFIG_LIBERTAS
+#ifdef CONFIG_RC_WIFI
 	{
 		.mmc		= 2,
 		//.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
@@ -565,7 +565,7 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
 {
 	omap2_hsmmc_init(mmc);
 	rc_vmmc1_supply.dev = mmc[0].dev;
-#ifdef CONFIG_LIBERTAS
+#ifdef CONFIG_RC_WIFI
 	rc_vmmc2_supply.dev = mmc[1].dev;
 #endif
 
