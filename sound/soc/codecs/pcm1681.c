@@ -73,17 +73,110 @@ static const char *pcm1681_deemph[] = {"None", "32Khz", "44.1Khz", "48Khz"};
 
 static const struct soc_enum pcm1681_enum = SOC_ENUM_SINGLE(PCM1681_APDIGI, 3, 4, pcm1681_deemph);
 
-static const DECLARE_TLV_DB_SCALE(out_tlv, -12100, 100, 1);
+static const DECLARE_TLV_DB_SCALE(dac_tlv, -6350, 50, 0);
+
+/*
+ * write to the pcm1681 register space
+ */
+static int pcm1681_write(struct snd_soc_codec *codec, unsigned int reg,
+		       unsigned int value)
+{
+	int ret;
+	u8 data[2];
+	struct i2c_client *client = codec->control_data;
+	/* data is
+	 *   D15..D8 pcm1681 register offset
+	 *   D7...D0 register data
+	 */
+	data[0] = reg & 0x7f;
+	data[1] = value & 0xff;
+
+	ret = i2c_master_send(client, data, 2);
+#if 0
+	pcm1681_write_reg_cache(codec, data[0], data[1]);
+	if (codec->hw_write(codec->control_data, data, 2) == 2)
+		return 0;
+	else
+		return -EIO;
+#endif
+	return ret;
+}
+
+/*
+ * read from the pcm1681 register space
+ */
+static unsigned int pcm1681_read(struct snd_soc_codec *codec, unsigned int reg)
+{
+	int ret;
+	//u8 *cache = codec->reg_cache;
+	struct i2c_client *client = codec->control_data;
+	struct i2c_adapter *adap = client->adapter;
+	struct i2c_msg msg[2];
+
+	u8 buf[2];
+	u8 ret_buf[2];
+	buf[0] = reg;
+	msg[0].addr = client->addr;
+	msg[0].flags = client->flags;
+	msg[0].len = 1;
+	msg[0].buf = (char *)buf;
+	msg[1].addr = client->addr;
+	msg[1].flags = client->flags | I2C_M_RD;
+	msg[1].len = 1;
+	msg[1].buf = ret_buf;
+
+
+	ret = i2c_transfer(adap, msg, 2);
+	return msg[1].buf[0];
+
+	//pcm1681_write_reg_cache(codec, reg, *value);
+
+}
+
+
+static int snd_soc_pcm1681_put_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_mixer_control *mc = (struct soc_mixer_control *)kcontrol->private_value;
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	unsigned int reg = mc->reg;
+	unsigned int val = ucontrol->value.integer.value[0] + 128;
+
+	pcm1681_write(codec, reg, val);
+	return 0;
+}
+
+static int snd_soc_pcm1681_get_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_mixer_control *mc = (struct soc_mixer_control *)kcontrol->private_value;
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	unsigned int reg = mc->reg;
+
+	unsigned int val = pcm1681_read(codec, reg);
+
+	ucontrol->value.integer.value[0] = val - 128;
+	return 0;
+}
+
+#define SOC_SINGLE_TLV_PCM1681(xname, reg, shift, max, invert, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
+		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw, .get = snd_soc_pcm1681_get_volsw,\
+	.put = snd_soc_pcm1681_put_volsw, \
+	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
 
 static const struct snd_kcontrol_new pcm1681_snd_controls[] = {
-	SOC_SINGLE("Spkr1",PCM1681_ATT1,0,255,0),
-	SOC_SINGLE("Spkr2",PCM1681_ATT2,0,255,0),
-	SOC_SINGLE("Spkr3",PCM1681_ATT3,0,255,0),
-	SOC_SINGLE("Spkr4",PCM1681_ATT4,0,255,0),
-	SOC_SINGLE("Spkr5",PCM1681_ATT5,0,255,0),
-	SOC_SINGLE("Spkr6",PCM1681_ATT6,0,255,0),
-	SOC_SINGLE("Spkr7",PCM1681_ATT7,0,255,0),
-	SOC_SINGLE("Spkr8",PCM1681_ATT8,0,255,0),
+	SOC_SINGLE_TLV_PCM1681("SPKR1 Playback Volume",PCM1681_ATT1,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR2 Playback Volume",PCM1681_ATT2,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR3 Playback Volume",PCM1681_ATT3,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR4 Playback Volume",PCM1681_ATT4,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR5 Playback Volume",PCM1681_ATT5,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR6 Playback Volume",PCM1681_ATT6,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR7 Playback Volume",PCM1681_ATT7,0,127,0, dac_tlv),
+	SOC_SINGLE_TLV_PCM1681("SPKR8 Playback Volume",PCM1681_ATT8,0,127,0, dac_tlv),
 	SOC_ENUM("Deemphasis", pcm1681_enum),
 };
 
@@ -144,63 +237,6 @@ static inline void pcm1681_write_reg_cache(struct snd_soc_codec *codec,
 	cache[reg] = value;
 }
 
-/*
- * write to the pcm1681 register space
- */
-static int pcm1681_write(struct snd_soc_codec *codec, unsigned int reg,
-		       unsigned int value)
-{
-	int ret;
-	u8 data[2];
-	struct i2c_client *client = codec->control_data;
-	/* data is
-	 *   D15..D8 pcm1681 register offset
-	 *   D7...D0 register data
-	 */
-	data[0] = reg & 0x7f;
-	data[1] = value & 0xff;
-
-	ret = i2c_master_send(client, data, 2);
-#if 0
-	pcm1681_write_reg_cache(codec, data[0], data[1]);
-	if (codec->hw_write(codec->control_data, data, 2) == 2)
-		return 0;
-	else
-		return -EIO;
-#endif
-	return ret;
-}
-
-/*
- * read from the pcm1681 register space
- */
-static unsigned int pcm1681_read(struct snd_soc_codec *codec, unsigned int reg)
-{
-	int ret;
-	//u8 *cache = codec->reg_cache;
-	struct i2c_client *client = codec->control_data;
-	struct i2c_adapter *adap = client->adapter;
-	struct i2c_msg msg[2];
-
-	u8 buf[2];
-	u8 ret_buf[2];
-	buf[0] = reg;
-	msg[0].addr = client->addr;
-	msg[0].flags = client->flags;
-	msg[0].len = 1;
-	msg[0].buf = (char *)buf;
-	msg[1].addr = client->addr;
-	msg[1].flags = client->flags | I2C_M_RD;
-	msg[1].len = 1;
-	msg[1].buf = ret_buf;
-
-
-	ret = i2c_transfer(adap, msg, 2);
-	return msg[1].buf[0];
-
-	//pcm1681_write_reg_cache(codec, reg, *value);
-
-}
 
 static int pcm1681_add_widgets(struct snd_soc_codec *codec)
 {
