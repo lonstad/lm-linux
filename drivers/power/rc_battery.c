@@ -352,9 +352,9 @@ static int rc_battery_probe(struct i2c_client *client,
 		return ret;
 
 	rc_write_cmd(info, RC_REG_ON, RC_STATE_STARTUP);
-	rc_write_cmd(info, RC_REG_RED, RC_LED_DARK);
-	rc_write_cmd(info, RC_REG_GREEN, RC_LED_LIGHT);
-	rc_write_cmd(info, RC_REG_BLUE, RC_LED_DARK);
+	//rc_write_cmd(info, RC_REG_RED, RC_LED_DARK);
+	//rc_write_cmd(info, RC_REG_GREEN, RC_LED_LIGHT);
+	//rc_write_cmd(info, RC_REG_BLUE, RC_LED_DARK);
 	dev_info(&client->dev, "Version is %x\n", ver);
 
 	return 0;
