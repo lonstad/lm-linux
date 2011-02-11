@@ -201,16 +201,15 @@ config MACH_RC
 	depends on ARCH_OMAP3
 	default y
 	select OMAP_PACKAGE_CUS
+	select TOUCHSCREEN_EDT
+    select TOUCHSCREEN_CY8C300
 
 config RC_VERSION
     int "Version Num"
     depends on MACH_RC
     default 2
+
     
-config RC_EDT_TOUCH
-    bool "EDT Touch"
-    depends on MACH_RC
-    select TOUCHSCREEN_EDT
 	
 config MACH_MCB
 	bool "Laerdal MCB"

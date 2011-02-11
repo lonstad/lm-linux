@@ -40,19 +40,15 @@
 #include <linux/gpio_keys.h>
 #include "mux.h"
 #include "hsmmc.h"
+#include "sdram-micron-mt46h32m32lf-6.h"
 
 #define CONFIG_RC_WIFI
 #undef USE_MT_TOUCH
 
-#ifdef CONFIG_RC_EDT_TOUCH
+
 #include <linux/ft5x0x_ts.h>
-#else
-#ifdef USE_MT_TOUCH
-#include <linux/input/cyttsp.h>
-#else
 #include <linux/input/cy8ctma3001.h>
-#endif
-#endif
+
 
 #define G_SENSOR_INT1 156
 #define G_SENSOR_INT2 157
@@ -308,7 +304,6 @@ static void __init rc_flash_init(void)
 
 #endif
 
-#ifdef CONFIG_OMAP2_DSS
 /******************************************************************
  *
  * 	DSS
@@ -357,7 +352,6 @@ static struct platform_device rc_dss_device = {
 	},
 };
 
-#endif
 
 
 #ifdef CONFIG_BACKLIGHT_PWM
@@ -577,13 +571,13 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
  * Touch
  */
 
-#ifdef CONFIG_TOUCHSCREEN_CY8C300
+
 static struct cy8_platform_data tc_single_data = {
 	.maxx = 767,
 	.maxy = 1023,
 	.flags =  CY8F_REVERSE_Y | CY8F_XY_AXIS_FLIPPED,
 };
-#endif
+
 
 
 static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
@@ -596,21 +590,19 @@ static struct i2c_board_info __initdata rc_i2c1_boardinfo[] = {
 };
 
 static struct i2c_board_info __initdata rc_i2c2_boardinfo[] = {
-#ifdef CONFIG_RC_EDT_TOUCH
+
 	{
 			I2C_BOARD_INFO("EDTTouch", 0x38),
 			.type = FT5X0X_NAME,
 
 	},
-#endif
-#if CONFIG_TOUCHSCREEN_CY8C300
 	{
 		I2C_BOARD_INFO("TrueTouch", 0x24),
 
 		.type = "cy8ctma300",
 		.platform_data = &tc_single_data,
 	},
-#endif
+
 #if CONFIG_RC_VERSION > 1
 	{
 		I2C_BOARD_INFO("rc-bat1", 0x34),
@@ -645,6 +637,7 @@ static int __init rc_i2c_init(void)
 	if ( gpio_is_valid(RC_TOUCH_IRQ) )
 	{
 		rc_i2c2_boardinfo[0].irq = gpio_to_irq(RC_TOUCH_IRQ);
+		rc_i2c2_boardinfo[1].irq = rc_i2c2_boardinfo[0].irq;
 		printk(KERN_INFO "%s: Got IRQ %d for RC_TOUCH_IRQ\n", __func__, rc_i2c2_boardinfo[0].irq);
 	}
 
@@ -703,7 +696,7 @@ static void __init rc_init_irq(void)
 	//omap_board_config = rc_config;
 	//omap_board_config_size = ARRAY_SIZE(rc_config);
 	omap2_init_common_infrastructure();
-	omap2_init_common_devices(NULL, NULL);
+	omap2_init_common_devices(mt46h32m32lf6_sdrc_params, NULL);
 	omap_init_irq();
 	//omap_gpio_init();
 }
@@ -713,9 +706,7 @@ static struct platform_device *rc_devices[] __initdata = {
 	&rc_backlight_device,
 #endif
 	&rc_buttons_device,
-#ifdef CONFIG_OMAP2_DSS
 	&rc_dss_device,
-#endif
 };
 
 static const struct ehci_hcd_omap_platform_data rc_ehci_pdata __initconst = {
