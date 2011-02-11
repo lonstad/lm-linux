@@ -29,7 +29,8 @@
 #include <linux/earlysuspend.h>
 #endif
 
-#define CMD_READ_TOUCH 0xF9
+#define FT_CMD_READ_TOUCH 0xF9
+#define FT_CMD_READ_REG 0xFC
 
 #define DEBUG
 #undef CONFIG_FT5X0X_MULTITOUCH
@@ -91,6 +92,26 @@ static int ft5x0x_set_reg(struct i2c_client* client, u8 addr, u8 para) {
 	return 0;
 }
 
+static int ft5x0x_get_reg(struct i2c_client* client, u8 addr) {
+	u8 buf[3];
+	int ret;
+
+	buf[0] = addr + 0x40;
+	ret = i2c_smbus_write_block_data(client, FT_CMD_READ_REG, 1, buf);
+	if ( ret < 0 )
+	{
+		dev_err(&client->dev, "Read reg cmd failed");
+		return ret;
+	}
+	ret = i2c_smbus_read_byte(client);
+	if ( ret < 0 )
+	{
+		dev_err(&client->dev, "Read reg failed");
+	}
+	return ret;
+}
+
+
 static void ft5x0x_ts_release(struct ft5x0x_ts_data *ts) {
 
 #ifdef CONFIG_FT5X0X_MULTITOUCH	
@@ -118,7 +139,7 @@ static int ft5x0x_read_data(struct ft5x0x_ts_data *data) {
 		},
 	};
 
-	ret = i2c_smbus_write_byte(data->client, CMD_READ_TOUCH);
+	ret = i2c_smbus_write_byte(data->client, FT_CMD_READ_TOUCH);
 	if (ret < 0) {
 		dev_err(&data->client->dev, "Failed to send read touch command\n");
 		return ret;
@@ -279,7 +300,7 @@ static int ft5x0x_ts_probe(struct i2c_client *client,
 	struct ft5x0x_ts_data *ft5x0x_ts;
 	struct input_dev *input_dev;
 	int err = 0;
-
+	int vId;
 	printk(KERN_ERR "ft5x0x_ts probe start\n");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -296,6 +317,13 @@ static int ft5x0x_ts_probe(struct i2c_client *client,
 	}
 	ft5x0x_ts->client = client;
 	i2c_set_clientdata(client, ft5x0x_ts);
+
+	vId = ft5x0x_get_reg(client, 0x3D);
+	if ( vId < 0 ) {
+		kfree(ft5x0x_ts);
+		return -ENODEV;
+	}
+	dev_info(&client->dev, "Vendor ID %d\n", vId);
 
 	INIT_WORK(&ft5x0x_ts->pen_event_work, ft5x0x_ts_pen_irq_work);
 #if 0
