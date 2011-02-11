@@ -331,8 +331,9 @@ static int __devinit cy8_probe(struct i2c_client *client,
 	}
 
 	error = i2c_smbus_read_byte_data(ts->client, 0);
-	if (hst_mode < 0) {
-		i2c_del_driver(&cy8_driver);
+	if (error < 0) {
+
+		kfree(ts);
 		dev_err(&client->dev, "No I2C response");
 		return error;
 	}
@@ -344,11 +345,8 @@ static int __devinit cy8_probe(struct i2c_client *client,
 	i2c_smbus_write_byte_data(ts->client, 0, hst_mode);
 	/* bus-independent initialization of cy8ctma300 below */
 	error = cy8_initialize(client, ts);
-	if (error) {
-		i2c_del_driver(&cy8_driver);
-	}
 
-	return 0;
+	return error;
 
 }
 
