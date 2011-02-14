@@ -50,11 +50,12 @@ typedef enum {
 } RC_STATES;
 
 typedef enum {
-	RC_LED_MCU = 0,
-	RC_LED_DARK = 4,
-	RC_LED_LIGHT = 5,
-	RC_LED_BLINK = 7
+	RC_LED_DARK = 0,
+	RC_LED_LIGHT = 1,
+	RC_LED_BLINK = 3,
+	RC_LED_CTL_MASK = 4,
 } RC_LED_CTL;
+
 
 struct rc_info;
 
@@ -72,6 +73,12 @@ static struct rc_info unique_info;
 
 static DEFINE_IDR(battery_id);
 static DEFINE_MUTEX(battery_lock);
+
+
+/*******************************************************************************
+ *
+ * 	Access functions
+ */
 
 static inline int rc_read_reg(struct rc_info *info, int reg, u8 *val) {
 	int ret;
@@ -103,7 +110,123 @@ static int rc_write_cmd(struct rc_info *info, int reg, u8 val) {
 		dev_err(&info->client->dev, "BC not ready for command - aborting\n");
 		return -EAGAIN;
 	}
+
+	dev_info(&info->client->dev, "%s reg %d = 0x%2x\n", __func__, reg, val);
+
 	return i2c_smbus_write_byte_data(info->client, reg, val);
+}
+
+/******************************************************************************
+ *
+ * 	LED stuff
+ */
+
+static ssize_t rc_led_show_property(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf) {
+	u8 reg = -ENODATA;
+	int res;
+	dev_dbg(dev, "%s called for attr %s\n", __func__, attr->attr.name);
+
+	if (strcmp(attr->attr.name, "led_red") == 0)
+		res = rc_read_reg(&unique_info, RC_REG_RED, &reg);
+
+	if (strcmp(attr->attr.name, "led_green") == 0)
+			res = rc_read_reg(&unique_info, RC_REG_GREEN, &reg);
+
+	if (strcmp(attr->attr.name, "led_blue") == 0)
+		res = rc_read_reg(&unique_info, RC_REG_BLUE, &reg);
+
+	if (reg == -ENODATA)
+		return reg;
+
+	switch (reg & 0x3) {
+
+	case RC_LED_DARK:
+		res = sprintf(buf, "off\n");
+		break;
+
+	case RC_LED_LIGHT:
+		res = sprintf(buf, "on\n");
+		break;
+
+	case RC_LED_BLINK:
+		res = sprintf(buf, "blink\n");
+		break;
+
+	default:
+		res = sprintf(buf, "undefined\n");
+		break;
+	}
+	return res;
+}
+
+static ssize_t rc_led_store_property(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf, size_t count) {
+
+	int reg = -ENODATA;
+	int val = -EINVAL;
+	char *p = strchr(buf, '\n');
+	if (strcmp(attr->attr.name, "led_red") == 0)
+		reg = RC_REG_RED;
+
+	if (strcmp(attr->attr.name, "led_green") == 0)
+		reg = RC_REG_GREEN;
+
+	if (strcmp(attr->attr.name, "led_blue") == 0)
+				reg = RC_REG_BLUE;
+
+	if ( reg == -ENODATA )
+		return reg;
+
+	if (p)
+		*p = '\0';
+
+	if ( strcmp(buf, "on") == 0 )
+		val = RC_LED_LIGHT;
+
+	if ( strcmp(buf, "off") == 0 )
+		val = RC_LED_DARK;
+
+	if (strcmp(buf, "blink") == 0)
+		val = RC_LED_BLINK;
+
+
+	if ( val == -EINVAL )
+		return val;
+
+	dev_dbg(dev, "Write reg %d with 0x%2x\n", reg ,val);
+	rc_write_cmd(&unique_info, reg, RC_LED_CTL_MASK | (val & 0x3));
+	return count;
+}
+
+#define LED_ATTR(_name)					\
+{									\
+	.attr = { .name = #_name, \
+			  .mode = S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP, \
+				  },	\
+	.show = rc_led_show_property,				\
+	.store = rc_led_store_property,				\
+}
+
+static struct device_attribute rc_led_attrs[] = {
+	/* Properties of type string */
+	LED_ATTR(led_red),
+	LED_ATTR(led_green),
+	LED_ATTR(led_blue),
+};
+
+static int rc_led_init_attrs(struct device *dev)
+{
+	int res;
+	int n;
+	for (n=0; n < ARRAY_SIZE(rc_led_attrs); n++) {
+		res = device_create_file(dev, &rc_led_attrs[n]);
+		if (res)
+			break;
+	}
+	return res;
 }
 
 void rc_battery_say_goodbye(void) {
@@ -300,6 +423,7 @@ static int rc_battery_remove(struct i2c_client *client)
 	return 0;
 }
 
+
 static int rc_battery_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -347,6 +471,7 @@ static int rc_battery_probe(struct i2c_client *client,
 		goto fail_register;
 	}
 
+	ret = rc_led_init_attrs(&client->dev);
 	ret = rc_get_version(info, &ver);
 	if (ret)
 		return ret;
