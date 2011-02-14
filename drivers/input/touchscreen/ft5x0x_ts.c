@@ -3,7 +3,7 @@
  *
  * FocalTech ft5x0x TouchScreen driver. 
  *
- * Copyright (c) 2010  Focal tech Ltd.
+ * Copyright (c) 2011  Laerdal Medical.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -30,7 +30,12 @@
 #endif
 
 #define FT_CMD_READ_TOUCH 0xF9
-#define FT_CMD_READ_REG 0xFC
+#define FT_CMD_REG 0xFC
+#define FT_REG_ID 0x3D
+#define FT_REG_VERSION  0x3B
+#define FT_REG_STATE  0x3C
+#define FT_REG_PMODE  0x3A
+#define FT_REG_CTL 0x6
 
 #define DEBUG
 #undef CONFIG_FT5X0X_MULTITOUCH
@@ -63,12 +68,26 @@ struct early_suspend early_suspend;
 #endif
 };
 
+static u8 compute_crc(const u8* msg, int len) {
+	u8 res=0;
+	int n;
+	for (n=0; n < len; n++)
+		res = res ^msg[n];
+
+	return res;
+}
 
 static int ft5x0x_i2c_txdata(struct i2c_client *client, char *txdata,
 		int length) {
 	int ret;
-	struct i2c_msg msg[] = { { .addr = client->addr, .flags = 0, .len = length,
-			.buf = txdata, }, };
+	struct i2c_msg msg[] = {
+		{
+			.addr = client->addr,
+			.flags = 0,
+			.len = length,
+			.buf = txdata,
+		},
+	};
 
 	ret = i2c_transfer(client->adapter, msg, 1);
 	if (ret < 0)
@@ -78,12 +97,15 @@ static int ft5x0x_i2c_txdata(struct i2c_client *client, char *txdata,
 }
 
 static int ft5x0x_set_reg(struct i2c_client* client, u8 addr, u8 para) {
-	u8 buf[3];
+	u8 buf[4];
 	int ret = -1;
 
-	buf[0] = addr;
-	buf[1] = para;
-	ret = ft5x0x_i2c_txdata(client, buf, 2);
+	buf[0] = FT_CMD_REG;
+	buf[1] = addr;
+	buf[2] = para;
+	buf[3] = buf[0] ^ buf[1] ^ buf[2];
+
+	ret = ft5x0x_i2c_txdata(client, buf, 4);
 	if (ret < 0) {
 		pr_err("write reg failed! %#x ret: %d", buf[0], ret);
 		return -1;
@@ -93,22 +115,25 @@ static int ft5x0x_set_reg(struct i2c_client* client, u8 addr, u8 para) {
 }
 
 static int ft5x0x_get_reg(struct i2c_client* client, u8 addr) {
-	u8 buf[3];
+	u8 rxBuf[4];
 	int ret;
+	struct i2c_msg msg[] = {
+			{
+				.addr = client->addr,
+				.flags = I2C_M_RD,
+				.len = 2,
+				.buf = rxBuf,
+			},
+		};
 
-	buf[0] = addr + 0x40;
-	ret = i2c_smbus_write_block_data(client, FT_CMD_READ_REG, 1, buf);
+	ret = i2c_smbus_write_byte_data(client, FT_CMD_REG, addr | 0x40);
 	if ( ret < 0 )
 	{
 		dev_err(&client->dev, "Read reg cmd failed");
-		return ret;
+		return -ENODEV;
 	}
-	ret = i2c_smbus_read_byte(client);
-	if ( ret < 0 )
-	{
-		dev_err(&client->dev, "Read reg failed");
-	}
-	return ret;
+	ret = i2c_transfer(client->adapter, msg, 1);
+	return rxBuf[0];
 }
 
 
@@ -129,6 +154,7 @@ static int ft5x0x_read_data(struct ft5x0x_ts_data *data) {
 
 	struct ts_event *event = &data->event;
 	u8 buf[32];
+	u8 crc;
 	int ret;
 	struct i2c_msg msg[] = {
 		{
@@ -150,8 +176,9 @@ static int ft5x0x_read_data(struct ft5x0x_ts_data *data) {
 		dev_err(&data->client->dev, "Failed to read touch data\n");
 		return ret;
 	}
-	if (buf[0] != 0xAA || buf[1] != 0xAA) {
-		dev_err(&data->client->dev, "Wrong touch data header\n");
+	crc = compute_crc(buf, 25);
+	if (buf[25] != crc) {
+		dev_err(&data->client->dev, "CRC error in touch data\n");
 		return -EINVAL;
 	}
 	//dev_info(&data->client->dev, "packet len is %d\n", buf[2]);
@@ -300,30 +327,36 @@ static int ft5x0x_ts_probe(struct i2c_client *client,
 	struct ft5x0x_ts_data *ft5x0x_ts;
 	struct input_dev *input_dev;
 	int err = 0;
-	int vId;
-	printk(KERN_ERR "ft5x0x_ts probe start\n");
+	int vId, fw, state, pmode;
+	dev_info(&client->dev, "ft5x0x_ts probe start\n");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		err = -ENODEV;
-		printk(KERN_ERR "ft5x0x_ts i2c_check_functionality error\n");
+		dev_err(&client->dev, "ft5x0x_ts i2c_check_functionality error\n");
 		goto exit_check_functionality_failed;
 	}
 
 	ft5x0x_ts = kzalloc(sizeof(struct ft5x0x_ts_data), GFP_KERNEL);
 	if (!ft5x0x_ts) {
 		err = -ENOMEM;
-		printk(KERN_ERR "ft5x0x_ts alloc error\n");
+		dev_err(&client->dev, "ft5x0x_ts alloc error\n");
 		goto exit_alloc_data_failed;
 	}
 	ft5x0x_ts->client = client;
 	i2c_set_clientdata(client, ft5x0x_ts);
 
-	vId = ft5x0x_get_reg(client, 0x3D);
+	vId = ft5x0x_get_reg(client, FT_REG_ID);
 	if ( vId < 0 ) {
 		kfree(ft5x0x_ts);
 		return -ENODEV;
 	}
-	dev_info(&client->dev, "Vendor ID %d\n", vId);
+
+	fw = ft5x0x_get_reg(client, FT_REG_VERSION);
+	pmode = ft5x0x_get_reg(client, FT_REG_PMODE);
+	ft5x0x_set_reg(client, FT_REG_CTL, 0);	// Set active
+	state = ft5x0x_get_reg(client, FT_REG_STATE);
+	dev_info(&client->dev, "VID %d, FW %d, STATE %d, PMODE %d\n",
+			vId, fw, state, pmode);
 
 	INIT_WORK(&ft5x0x_ts->pen_event_work, ft5x0x_ts_pen_irq_work);
 #if 0
@@ -449,6 +482,6 @@ static void __exit ft5x0x_ts_exit(void)
 module_init(ft5x0x_ts_init);
 module_exit(ft5x0x_ts_exit);
 
-MODULE_AUTHOR("<wenfs@Focaltech-systems.com>");
+MODULE_AUTHOR("<hcl@datarespons.no>");
 MODULE_DESCRIPTION("FocalTech ft5x0x TouchScreen driver");
 MODULE_LICENSE("GPL");
