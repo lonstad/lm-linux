@@ -234,6 +234,7 @@ obj-$(CONFIG_MACH_RC)		+= board-rc.o hsmmc.o
 ifeq ($(CONFIG_MACH_MCB), y)
 obj-$(CONFIG_MCB_P1)		+= board-mcb.o hsmmc.o mcb_omap_pwm.o
 obj-$(CONFIG_MCB_P2)		+= board-mcb-p2.o hsmmc.o mcb_omap_pwm.o
+obj-$(CONFIG_MCB_PILOT)		+= board-mcb-pilot.o hsmmc.o mcb_omap_pwm.o
 endif
 
 obj-$(CONFIG_MACH_CRANEBOARD)		+= board-am3517crane.o

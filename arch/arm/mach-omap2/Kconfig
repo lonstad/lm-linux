@@ -230,6 +230,10 @@ config MCB_P1
 config MCB_P2
 	bool "Prototype 2"
 	
+config MCB_PILOT
+    bool "Pilot"
+    select BATTERY_BU
+	
 endchoice
 
 config MACH_CRANEBOARD
