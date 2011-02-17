@@ -183,8 +183,12 @@ config BATTERY_INTEL_MID
 	  platforms.
 
 config BATTERY_RC
-	tristate "Battery driver for LAerdal RC"
+	tristate "Battery (BC) driver for Laerdal RC"
 	depends on I2C && MACH_RC
+	
+config BATTERY_BU
+    tristate "Battery (BC) driver for Laerdal BU"
+    depends on I2C && MACH_MCB
 	
 config CHARGER_ISP1704
 	tristate "ISP1704 USB Charger Detection"
