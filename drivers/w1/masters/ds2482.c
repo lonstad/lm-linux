@@ -56,7 +56,8 @@
 #define DS2482_REG_CFG_PPM		0x02
 #define DS2482_REG_CFG_APU		0x01
 
-
+#define DS2482_DEFAULT_CONFIG 0xE1
+//#define DS2482_DEFAULT_CONFIG 0xF0
 /**
  * Write and verify codes for the CHANNEL_SELECT command (DS2482-800 only).
  * To set the channel, write the value at the index of the channel.
@@ -362,6 +363,8 @@ static u8 ds2482_w1_read_byte(void *data)
 
 	/* Read the data byte */
 	result = i2c_smbus_read_byte(pdev->client);
+	if ( result < 0 )
+		dev_err(&pdev->client->dev, "%s: read failed\n", __func__);
 
 	mutex_unlock(&pdev->access_lock);
 
@@ -385,7 +388,11 @@ static u8 ds2482_w1_reset_bus(void *data)
 	mutex_lock(&pdev->access_lock);
 
 	/* Select the channel */
-	ds2482_wait_1wire_idle(pdev);
+	if ( ds2482_wait_1wire_idle(pdev) < 0 ) {
+		dev_err(&pdev->client->dev, "%s: failed wait lwire_idle\n", __func__);
+		goto exit_reset;
+	}
+
 	if (pdev->w1_count > 1)
 		ds2482_set_channel(pdev, pchan->channel);
 
@@ -399,14 +406,23 @@ static u8 ds2482_w1_reset_bus(void *data)
 		/* If the chip did reset since detect, re-config it */
 		if (err & DS2482_REG_STS_RST)
 			ds2482_send_cmd_data(pdev, DS2482_CMD_WRITE_CONFIG,
-					     0xF0);
+					     DS2482_DEFAULT_CONFIG );
 	}
-
+exit_reset:
 	mutex_unlock(&pdev->access_lock);
 
 	return retval;
 }
 
+static u8 ds2482_set_pullup(void *data, int delay)
+{
+	struct ds2482_w1_chan* ch = data;
+	u8 config = DS2482_DEFAULT_CONFIG;
+	config = 0xA5;
+	//printk(KERN_WARNING "%s with delay %d\n", __func__, delay);
+	ds2482_send_cmd_data(ch->pdev, DS2482_CMD_WRITE_CONFIG, config );
+	return 0;
+}
 
 static int ds2482_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -451,8 +467,9 @@ static int ds2482_probe(struct i2c_client *client,
 	if (ds2482_set_channel(data, 7) == 0)
 		data->w1_count = 8;
 
+	dev_info(&client->dev, "%s: channels is %d\n", __func__, data->w1_count);
 	/* Set all config items to 0 (off) */
-	ds2482_send_cmd_data(data, DS2482_CMD_WRITE_CONFIG, 0xF0);
+	ds2482_send_cmd_data(data, DS2482_CMD_WRITE_CONFIG, DS2482_DEFAULT_CONFIG);
 
 	mutex_init(&data->access_lock);
 
@@ -468,6 +485,7 @@ static int ds2482_probe(struct i2c_client *client,
 		data->w1_ch[idx].w1_bm.touch_bit  = ds2482_w1_touch_bit;
 		data->w1_ch[idx].w1_bm.triplet    = ds2482_w1_triplet;
 		data->w1_ch[idx].w1_bm.reset_bus  = ds2482_w1_reset_bus;
+		data->w1_ch[idx].w1_bm.set_pullup = ds2482_set_pullup;
 
 		err = w1_add_master_device(&data->w1_ch[idx].w1_bm);
 		if (err) {
