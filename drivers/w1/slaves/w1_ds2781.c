@@ -1,7 +1,7 @@
 /*
  * 1-Wire implementation for the ds2781 chip
  *
- * Copyright © 2004-2005, Szabolcs Gyurko <szabolcs.gyurko@tlt.hu>
+ * Copyright © 2011, Laerdal Medical
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is
@@ -75,13 +75,13 @@ out:
 
 int w1_ds2781_read(struct device *dev, char *buf, int addr, size_t count)
 {
-	dev_info(dev, "%s addr 0x%02x, size %d\n", __func__, addr, count);
+	dev_dbg(dev, "%s addr 0x%02x, size %d\n", __func__, addr, count);
 	return w1_ds2781_io(dev, buf, addr, count, 0);
 }
 
 int w1_ds2781_write(struct device *dev, char *buf, int addr, size_t count)
 {
-	dev_info(dev, "%s addr 0x%02x, size %d\n", __func__, addr, count);
+	dev_dbg(dev, "%s addr 0x%02x, size %d\n", __func__, addr, count);
 	return w1_ds2781_io(dev, buf, addr, count, 1);
 }
 
@@ -232,7 +232,7 @@ static struct w1_family w1_ds2781_family = {
 static int __init w1_ds2781_init(void)
 {
 	printk(KERN_INFO "1-Wire driver for the DS2781 battery monitor "
-	       " chip  - (c) hcl@datarespons.no\n");
+	       " chip  - (c) Laerdal Medical\n");
 	idr_init(&bat_idr);
 	return w1_register_family(&w1_ds2781_family);
 }
@@ -252,5 +252,5 @@ module_init(w1_ds2781_init);
 module_exit(w1_ds2781_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Szabolcs Gyurko <szabolcs.gyurko@tlt.hu>");
-MODULE_DESCRIPTION("1-wire Driver Dallas 2760 battery monitor chip");
+MODULE_AUTHOR("Hans Chr Lonstad <hcl@datarespons.no>");
+MODULE_DESCRIPTION("1-wire Driver Dallas 2781 battery monitor chip");
