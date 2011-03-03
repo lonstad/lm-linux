@@ -41,6 +41,7 @@ struct ds2781_device_info {
     int current_uA; /* units of µA */
     int current_avg_uA; /* units of uA */
     int accum_current_uAh; /* units of µAh */
+    int min_charge_current_uA;
     int temp_raw; /* units of 0.125 °C */
     int temp_C; /* units of 0.1 °C */
     int rated_capacity; /* units of µAh */
@@ -182,6 +183,7 @@ static int ds2781_battery_read_status(struct ds2781_device_info *di) {
         ds2781_rcap = (di->raw[DS2781_FULL40_CAPACITY_MSB] << 8) | di->raw[DS2781_FULL40_CAPACITY_LSB];
         tmp = (ds2781_rcap * 625 * di->raw[DS2781_ACTIVE_RSNSP]) / 100; /* convert to µAh */
         di->rated_capacity = (int) tmp;
+        di->min_charge_current_uA = di->raw[DS2781_IMIN] * 50 * di->raw[DS2781_ACTIVE_RSNSP];
     } else {
         start = DS2781_STATUS_REG;
         count = 0x1b;
@@ -238,10 +240,10 @@ static void ds2781_battery_set_current_accum(struct ds2781_device_info *di, unsi
 static void ds2781_battery_update_status(struct ds2781_device_info *di) {
     int val;
     ds2781_battery_read_status(di);
-    if (di->current_uA < -5000)
-        di->charge_status = POWER_SUPPLY_STATUS_DISCHARGING;
-    else if (di->current_uA > 5000)
+    if (di->current_uA > di->min_charge_current_uA)
         di->charge_status = POWER_SUPPLY_STATUS_CHARGING;
+    else if (di->current_uA < -5000)
+        di->charge_status = POWER_SUPPLY_STATUS_DISCHARGING;
     else
         di->charge_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 
