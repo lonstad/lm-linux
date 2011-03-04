@@ -460,7 +460,7 @@ static struct regulator_init_data rc_vmmc1 = {
 };
 
 static struct twl4030_codec_audio_data rc_audio_data = {
-	.audio_mclk = 26000000,
+
 };
 
 static struct twl4030_codec_data rc_codec_data = {
@@ -691,14 +691,11 @@ static struct omap_board_config_kernel rc_config[] __initdata = {
 	{ OMAP_TAG_LCD,		&rc_lcd_config },
 };
 
-static void __init rc_init_irq(void)
+
+static void __init rc_init_early(void)
 {
-	//omap_board_config = rc_config;
-	//omap_board_config_size = ARRAY_SIZE(rc_config);
-	omap2_init_common_infrastructure();
-	omap2_init_common_devices(mt46h32m32lf6_sdrc_params, NULL);
-	omap_init_irq();
-	//omap_gpio_init();
+    omap2_init_common_infrastructure();
+    omap2_init_common_devices(mt46h32m32lf6_sdrc_params, NULL);
 }
 
 static struct platform_device *rc_devices[] __initdata = {
@@ -831,7 +828,8 @@ MACHINE_START(OVERO, "Laerdal Remote Control")
 	.boot_params	= 0x80000100,
 	.map_io		= omap3_map_io,
 	.reserve	= omap_reserve,
-	.init_irq	= rc_init_irq,
+	.init_irq	= omap_init_irq,
+	.init_early = rc_init_early,
 	.init_machine	= rc_init,
 	.timer		= &omap_timer,
 MACHINE_END

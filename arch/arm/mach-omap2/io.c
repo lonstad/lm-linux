@@ -310,7 +310,7 @@ static int __init _omap2_init_reprogram_sdrc(void)
 	int v = -EINVAL;
 	long rate;
 
-	if (!cpu_is_omap34xx() || cpu_is_omap3517() || cpu_is_omap3505() )
+	if (!cpu_is_omap34xx())
 		return 0;
 
 	dpll3_m2_ck = clk_get(NULL, "dpll3_m2_ck");

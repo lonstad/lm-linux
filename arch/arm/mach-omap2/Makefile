@@ -237,6 +237,8 @@ obj-$(CONFIG_MCB_P2)		+= board-mcb-p2.o hsmmc.o mcb_omap_pwm.o omap_phy_internal
 obj-$(CONFIG_MCB_PILOT)		+= board-mcb-pilot.o hsmmc.o mcb_omap_pwm.o omap_phy_internal.o
 endif
 
+obj-$(CONFIG_MACH_RC) += board-rc.o hsmmc.o
+
 obj-$(CONFIG_MACH_CRANEBOARD)		+= board-am3517crane.o
 
 obj-$(CONFIG_MACH_SBC3530)		+= board-omap3stalker.o \

@@ -58,7 +58,7 @@ int omap_pwm_init(void);
 #define PSU_PWTBN_CTL2	64	// Shuts power when high
 #define LED_ARB			99
 #define I2C_REQ	  		100	// Master select 0 (default) is BC, 1 is omap
-#define I2C_ACK			101	// Interrupt from BC (low) TODO: Check level
+#define I2C_ACK			101	// Bus ack (high)
 #define PWR_BUTTON		92	// Power button event
 // Wifi
 #define WIFI_SD			69	// Powerdown WiFI when 0
@@ -564,16 +564,6 @@ static void mcb_evm_hecc_init(struct ti_hecc_platform_data *pdata)
  */
 
 
-static void __init mcb_init_irq(void)
-{
-	omap_board_config = mcb_config;
-	omap_board_config_size = ARRAY_SIZE(mcb_config);
-	omap2_init_common_infrastructure();
-	omap2_init_common_devices(NULL, NULL);
-	omap_init_irq();
-
-}
-
 static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 	.port_mode[0] = EHCI_HCD_OMAP_MODE_PHY,
 	.port_mode[1] = EHCI_HCD_OMAP_MODE_UNKNOWN,
@@ -598,11 +588,20 @@ static struct omap_board_mux board_mux[] __initdata = {
 #endif
 
 static struct omap_musb_board_data musb_board_data = {
-	.interface_type		= MUSB_INTERFACE_ULPI,
-	.mode			= MUSB_OTG,
-	.power			= 500,
-	.extvbus	 	= 1,
-};
+    .interface_type     = MUSB_INTERFACE_ULPI,
+        .mode           = MUSB_OTG,
+        .power          = 500,
+        .set_phy_power  = am35x_musb_phy_power,
+        .clear_irq      = am35x_musb_clear_irq,
+        .set_mode       = am35x_musb_set_mode,
+        .reset          = am35x_musb_reset,
+    };
+
+static void __init mcb_init_early(void)
+{
+    omap2_init_common_infrastructure();
+    omap2_init_common_devices(NULL, NULL);
+}
 
 static __init void mcb_musb_init(void)
 {
@@ -630,6 +629,8 @@ static struct platform_device *mcb_devices[] __initdata = {
 
 static void __init mcb_init(void)
 {
+    omap_board_config = mcb_config;
+    omap_board_config_size = ARRAY_SIZE(mcb_config);
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CUS);
 	mcb_init_power_off();
 	mcb_export_gpio();
@@ -659,7 +660,8 @@ static void __init mcb_init(void)
 MACHINE_START(OMAP3517EVM, "DR MCB-P2 board")
 	.boot_params	= 0x80000100,
 	.map_io		= omap3_map_io,
-	.init_irq	= mcb_init_irq,
+	.init_irq	= omap_init_irq,
+	.init_early = mcb_init_early,
 	.reserve = omap_reserve,
 	.init_machine	= mcb_init,
 	.timer		= &omap_timer,
