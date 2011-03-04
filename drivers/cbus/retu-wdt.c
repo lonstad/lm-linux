@@ -52,18 +52,15 @@ static DEFINE_MUTEX(retu_wdt_mutex);
 
 /* Current period of watchdog */
 static unsigned int period_val = RETU_WDT_DEFAULT_TIMER;
-static int counter_param = RETU_WDT_MAX_TIMER;
 
 struct retu_wdt_dev {
 	struct device		*dev;
-	int			users;
+	unsigned long		users;
 	struct miscdevice	retu_wdt_miscdev;
-	struct timer_list	ping_timer;
+	struct delayed_work	ping_work;
 };
 
 static struct retu_wdt_dev *retu_wdt;
-
-static void retu_wdt_set_ping_timer(unsigned long enable);
 
 static int _retu_modify_counter(unsigned int new)
 {
@@ -86,80 +83,38 @@ static int retu_modify_counter(unsigned int new)
 	return 0;
 }
 
-static ssize_t retu_wdt_period_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	/* Show current max counter */
-	return sprintf(buf, "%u\n", (u16)period_val);
-}
-
-/*
- * Note: This inteface is non-standard and likely to disappear!
- * Use /dev/watchdog instead, that's the standard.
- */
-static ssize_t retu_wdt_period_store(struct device *dev,
-				struct device_attribute *attr,
-				const char *buf, size_t count)
-{
-	unsigned int new_period;
-	int ret;
-
-#ifdef CONFIG_WATCHDOG_NOWAYOUT
-	retu_wdt_set_ping_timer(0);
-#endif
-
-	if (sscanf(buf, "%u", &new_period) != 1) {
-		printk(KERN_ALERT "retu_wdt_period_store: Invalid input\n");
-		return -EINVAL;
-	}
-
-	ret = retu_modify_counter(new_period);
-	if (ret < 0)
-		return ret;
-
-	return strnlen(buf, count);
-}
-
-static ssize_t retu_wdt_counter_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	u16 counter;
-
-	/* Show current value in watchdog counter */
-	counter = retu_read_reg(dev, RETU_REG_WATCHDOG);
-
-	/* Only the 5 LSB are important */
-	return snprintf(buf, PAGE_SIZE, "%u\n", (counter & 0x3F));
-}
-
-static DEVICE_ATTR(period, S_IRUGO | S_IWUSR, retu_wdt_period_show, \
-			retu_wdt_period_store);
-static DEVICE_ATTR(counter, S_IRUGO, retu_wdt_counter_show, NULL);
-
-/*----------------------------------------------------------------------------*/
-
 /*
  * Since retu watchdog cannot be disabled in hardware, we must kick it
  * with a timer until userspace watchdog software takes over. Do this
  * unless /dev/watchdog is open or CONFIG_WATCHDOG_NOWAYOUT is set.
  */
-static void retu_wdt_set_ping_timer(unsigned long enable)
+static void retu_wdt_ping_enable(struct retu_wdt_dev *wdev)
 {
 	_retu_modify_counter(RETU_WDT_MAX_TIMER);
-	if (enable)
-		mod_timer(&retu_wdt->ping_timer,
-				jiffies + RETU_WDT_DEFAULT_TIMER * HZ);
-	else
-		del_timer_sync(&retu_wdt->ping_timer);
+	schedule_delayed_work(&wdev->ping_work,
+			      round_jiffies_relative(RETU_WDT_DEFAULT_TIMER * HZ));
+}
+
+static void retu_wdt_ping_disable(struct retu_wdt_dev *wdev)
+{
+	_retu_modify_counter(RETU_WDT_MAX_TIMER);
+	cancel_delayed_work_sync(&wdev->ping_work);
+}
+
+static void retu_wdt_ping_work(struct work_struct *work)
+{
+	struct retu_wdt_dev *wdev = container_of(to_delayed_work(work),
+					struct retu_wdt_dev, ping_work);
+	retu_wdt_ping_enable(wdev);
 }
 
 static int retu_wdt_open(struct inode *inode, struct file *file)
 {
-	if (test_and_set_bit(1, (unsigned long *)&(retu_wdt->users)))
+	if (test_and_set_bit(0, &retu_wdt->users))
 		return -EBUSY;
 
 	file->private_data = (void *)retu_wdt;
-	retu_wdt_set_ping_timer(0);
+	retu_wdt_ping_disable(retu_wdt);
 
 	return nonseekable_open(inode, file);
 }
@@ -169,9 +124,9 @@ static int retu_wdt_release(struct inode *inode, struct file *file)
 	struct retu_wdt_dev *wdev = file->private_data;
 
 #ifndef CONFIG_WATCHDOG_NOWAYOUT
-	retu_wdt_set_ping_timer(1);
+	retu_wdt_ping_enable(wdev);
 #endif
-	wdev->users = 0;
+	clear_bit(0, &wdev->users);
 
 	return 0;
 }
@@ -226,18 +181,6 @@ static long retu_wdt_ioctl(struct file *file, unsigned int cmd,
 	return 0;
 }
 
-/* Start kicking retu watchdog until user space starts doing the kicking */
-static int __devinit retu_wdt_ping(void)
-{
-#ifdef CONFIG_WATCHDOG_NOWAYOUT
-	retu_modify_counter(RETU_WDT_MAX_TIMER);
-#else
-	retu_wdt_set_ping_timer(1);
-#endif
-
-	return 0;
-}
-
 static const struct file_operations retu_wdt_fops = {
 	.owner		= THIS_MODULE,
 	.write		= retu_wdt_write,
@@ -245,8 +188,6 @@ static const struct file_operations retu_wdt_fops = {
 	.open		= retu_wdt_open,
 	.release	= retu_wdt_release,
 };
-
-/*----------------------------------------------------------------------------*/
 
 static int __init retu_wdt_probe(struct platform_device *pdev)
 {
@@ -258,19 +199,6 @@ static int __init retu_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	wdev->dev = &pdev->dev;
-	wdev->users = 0;
-
-	ret = device_create_file(&pdev->dev, &dev_attr_period);
-	if (ret) {
-		dev_err(&pdev->dev, "Error creating sysfs period\n");
-		goto free1;
-	}
-
-	ret = device_create_file(&pdev->dev, &dev_attr_counter);
-	if (ret) {
-		dev_err(&pdev->dev, "Error creating sysfs counter\n");
-		goto free2;
-	}
 
 	platform_set_drvdata(pdev, wdev);
 	retu_wdt = wdev;
@@ -281,38 +209,21 @@ static int __init retu_wdt_probe(struct platform_device *pdev)
 
 	ret = misc_register(&(wdev->retu_wdt_miscdev));
 	if (ret)
-		goto free3;
+		goto err_free_wdev;
 
-	setup_timer(&wdev->ping_timer, retu_wdt_set_ping_timer, 1);
+	INIT_DELAYED_WORK(&wdev->ping_work, retu_wdt_ping_work);
 
-	/* passed as module parameter? */
-	ret = retu_modify_counter(counter_param);
-	if (ret == -EINVAL) {
-		ret = retu_modify_counter(RETU_WDT_DEFAULT_TIMER);
-		dev_dbg(&pdev->dev, "Initializing to default value\n");
-	}
-
-	/* Kick the watchdog for kernel booting to finish */
+	/* Kick the watchdog for kernel booting to finish.
+	 * If nowayout is not set, we start the ping work. */
+#ifdef CONFIG_WATCHDOG_NOWAYOUT
 	retu_modify_counter(RETU_WDT_MAX_TIMER);
-
-	ret = retu_wdt_ping();
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Failed to ping\n");
-		goto free4;
-	}
+#else
+	retu_wdt_ping_enable(retu_wdt);
+#endif
 
 	return 0;
 
-free4:
-	misc_deregister(&wdev->retu_wdt_miscdev);
-
-free3:
-	device_remove_file(&pdev->dev, &dev_attr_counter);
-
-free2:
-	device_remove_file(&pdev->dev, &dev_attr_period);
-
-free1:
+err_free_wdev:
 	kfree(wdev);
 
 	return ret;
@@ -324,8 +235,7 @@ static int __devexit retu_wdt_remove(struct platform_device *pdev)
 
 	wdev = platform_get_drvdata(pdev);
 	misc_deregister(&wdev->retu_wdt_miscdev);
-	device_remove_file(&pdev->dev, &dev_attr_period);
-	device_remove_file(&pdev->dev, &dev_attr_counter);
+	cancel_delayed_work_sync(&wdev->ping_work);
 	kfree(wdev);
 
 	return 0;
@@ -350,9 +260,7 @@ static void __exit retu_wdt_exit(void)
 
 module_init(retu_wdt_init);
 module_exit(retu_wdt_exit);
-module_param(counter_param, int, 0);
 
 MODULE_DESCRIPTION("Retu WatchDog");
 MODULE_AUTHOR("Amit Kucheria");
 MODULE_LICENSE("GPL");
-

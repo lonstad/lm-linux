@@ -228,13 +228,13 @@ obj-$(CONFIG_MACH_OMAP4_PANDA)		+= board-omap4panda.o \
 					   hsmmc.o \
 					   omap_phy_internal.o
 
-obj-$(CONFIG_MACH_OMAP3517EVM)		+= board-am3517evm.o hsmmc.o
-obj-$(CONFIG_MACH_RC)		+= board-rc.o hsmmc.o
+obj-$(CONFIG_MACH_OMAP3517EVM)		+= board-am3517evm.o \
+					   omap_phy_internal.o \
 
 ifeq ($(CONFIG_MACH_MCB), y)
 obj-$(CONFIG_MCB_P1)		+= board-mcb.o hsmmc.o mcb_omap_pwm.o
-obj-$(CONFIG_MCB_P2)		+= board-mcb-p2.o hsmmc.o mcb_omap_pwm.o
-obj-$(CONFIG_MCB_PILOT)		+= board-mcb-pilot.o hsmmc.o mcb_omap_pwm.o
+obj-$(CONFIG_MCB_P2)		+= board-mcb-p2.o hsmmc.o mcb_omap_pwm.o omap_phy_internal.o
+obj-$(CONFIG_MCB_PILOT)		+= board-mcb-pilot.o hsmmc.o mcb_omap_pwm.o omap_phy_internal.o
 endif
 
 obj-$(CONFIG_MACH_CRANEBOARD)		+= board-am3517crane.o
@@ -261,3 +261,6 @@ obj-y					+= $(smc91x-m) $(smc91x-y)
 smsc911x-$(CONFIG_SMSC911X)		:= gpmc-smsc911x.o
 obj-y					+= $(smsc911x-m) $(smsc911x-y)
 obj-$(CONFIG_ARCH_OMAP4)		+= hwspinlock.o
+
+disp-$(CONFIG_OMAP2_DSS)		:= display.o
+obj-y					+= $(disp-m) $(disp-y)
