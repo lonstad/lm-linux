@@ -37,4 +37,5 @@ obj-$(CONFIG_CHARGER_TWL4030)	+= twl4030_charger.o
 obj-$(CONFIG_BATTERY_RC)	+= rc_battery.o
 obj-$(CONFIG_BATTERY_BU)	+= bu_battery.o
 
+CFLAGS_REMOVE_bu_battery.o = -Os
 

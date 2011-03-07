@@ -233,8 +233,8 @@ static struct ina219_cal system_ina219_cal = {
 
 static struct i2c_board_info __initdata mcb_i2c3_boardinfo[] = {
 	{
-		I2C_BOARD_INFO("PSU", 0xF0 >> 1),
-		.type = "mcb-bc",
+		I2C_BOARD_INFO("PSU", 0x70 >> 1),
+		.type = "bu-bc",
 	},
 
 	{
@@ -317,13 +317,21 @@ static struct omap_board_config_kernel mcb_config[] __initdata = {
 };
 
 static int __init mcb_i2c_init(void) {
+    int timeout = 0;
 	omap_register_i2c_bus(1, 400, mcb_i2c1_boardinfo, ARRAY_SIZE(mcb_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, mcb_i2c2_boardinfo, ARRAY_SIZE(mcb_i2c2_boardinfo));
-	if (gpio_get_value(I2C_ACK) == 0)
-		printk(KERN_ERR "%s BC did not grant us I2C3 - \n", __func__);
-	else
-		omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
-	return 0;
+
+	while ( timeout++ < 500 ) {
+	    if (gpio_get_value(I2C_ACK) ) {
+	        printk(KERN_INFO "%s: I2C_ACK after %d ms\n", __func__, timeout*10);
+	        omap_register_i2c_bus(3, 400, mcb_i2c3_boardinfo, ARRAY_SIZE(mcb_i2c3_boardinfo));
+	        return 0;
+	    }
+	    else
+	        msleep(10);
+	}
+	printk(KERN_INFO "%s: NO I2C_ACK from BC\n", __func__);
+	return -ENODEV;
 }
 
 static void mcb_reset_all(void) {
@@ -635,9 +643,10 @@ static void __init mcb_init(void)
 	mcb_init_power_off();
 	mcb_export_gpio();
 	mcb_reset_all();
+	mcb_bc_init();
 	platform_add_devices(mcb_devices, ARRAY_SIZE(mcb_devices));
 	omap_serial_init();
-	mcb_bc_init();
+
 	usb_ehci_init(&ehci_pdata);
 
 #ifdef CONFIG_CAN_TI_HECC

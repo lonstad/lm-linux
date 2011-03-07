@@ -117,11 +117,14 @@ static int bu_bc_write_cmd(struct bu_bc_info *info, u8 cmd, u8 p1, u8 p2, u8* v1
 	buf[0] = cmd;
 	buf[1] = p1;
 	buf[2] = p2;
-	buf[3] = ~(cmd + p1 + p2);
+	buf[3] = ~(cmd + p1 + p2) + 1;
 
 	ret = i2c_transfer(info->client->adapter, msg, 1);
 	if (ret < 0) {
-		dev_err(&info->client->dev, "%s write failed\n", __func__);
+	    if (ret == -EREMOTEIO)
+	        dev_err(&info->client->dev, "%s BC NACK'ed\n", __func__);
+	    else
+	        dev_err(&info->client->dev, "%s write failed with %d\n", __func__, ret);
 		return ret;
 	}
 	msleep(1000);
@@ -159,91 +162,107 @@ static ssize_t bu_bc_led_show_property(struct device *dev,
 	u8 ret_val[2];
 	u8 val[2];
 	struct bu_bc_info* info = dev_get_drvdata(dev);
-	BU_BC_CMDS cmd = BU_BC_CMD_INVALID;
 
 
 	if (strcmp(attr->attr.name, "fw_version") == 0)
-		cmd = BU_BC_CMD_VERSION;
+	    return sprintf(buf, "%d.%d\n", info->fw_ver >> 8, info->fw_ver & 0xff);
 
 	if (strcmp(attr->attr.name, "power_level_1") == 0)
-			cmd = BU_BC_CMD_SET_P1;
+	    return sprintf(buf, "%d\n", info->p1);
 
 	if (strcmp(attr->attr.name, "power_level_2") == 0)
-		cmd = BU_BC_CMD_SET_P2;
+	    return sprintf(buf, "%d\n", info->p2);
 
 	if (strcmp(attr->attr.name, "power_level_3") == 0)
-		cmd = BU_BC_CMD_SET_P3;
+	    return sprintf(buf, "%d\n", info->p3);
 
 	if (strcmp(attr->attr.name, "adapter_voltage") == 0)
-		cmd = BU_BC_CMD_SET_ADAPTER_VOLTAGE;
+	    return sprintf(buf, "%d\n", info->adapter_voltage);
 
 	if (strcmp(attr->attr.name, "vbus_voltage") == 0)
-		cmd = BU_BC_CMD_SET_VBUS_VOLTAGE;
-
-	if (strcmp(attr->attr.name, "battery_command") == 0)
-		cmd = BU_BC_CMD_SET_BATTERY;
-
-	if ( cmd == BU_BC_CMD_INVALID )
-		return -ENODATA;
-
-
-	val[0] = 0;
-	val[1] = 0;
-
-	dev_info(dev, "Get: Command %d (%s)\n", cmd, attr->attr.name);
-
-	switch (cmd) {
-	case BU_BC_CMD_VERSION:
-		return sprintf(buf, "%d.%d\n", info->fw_ver >> 8, info->fw_ver & 0xff);
-		break;
-
-	case BU_BC_CMD_SET_P1:
-		return sprintf(buf, "%d\n", info->p1);
-		break;
-
-	case BU_BC_CMD_SET_P2:
-		return sprintf(buf, "%d\n", info->p2);
-		break;
-
-	case BU_BC_CMD_SET_P3:
-		return sprintf(buf, "%d\n", info->p3);
-		break;
-
-	case BU_BC_CMD_SET_ADAPTER_VOLTAGE:
-		return sprintf(buf, "%d\n", info->adapter_voltage);
-		break;
-
-	case BU_BC_CMD_SET_VBUS_VOLTAGE:
 		return sprintf(buf, "%d\n", info->vbus_voltage);
-		break;
 
-	case BU_BC_CMD_SET_BATTERY:
-		switch (info->bat_state) {
+	if (strcmp(attr->attr.name, "battery_command") == 0) {
+	    switch (info->bat_state) {
 
-		case BU_BC_BAT_CMD_RESUME:
-			return sprintf(buf, "resume\n");
-			break;
-		case BU_BC_BAT_CMD_SUSPEND:
-			return sprintf(buf, "suspend\n");
-			break;
-		case BU_BC_BAT_CMD_BAT1PRI:
-			return sprintf(buf, "bat1pri\n");
-			break;
-		case BU_BC_BAT_CMD_BAT2PRI:
-			return sprintf(buf, "bat2pri\n");
-			break;
+        case BU_BC_BAT_CMD_RESUME:
+            return sprintf(buf, "resume\n");
+            break;
+        case BU_BC_BAT_CMD_SUSPEND:
+            return sprintf(buf, "suspend\n");
+            break;
+        case BU_BC_BAT_CMD_BAT1PRI:
+            return sprintf(buf, "bat1pri\n");
+            break;
+        case BU_BC_BAT_CMD_BAT2PRI:
+            return sprintf(buf, "bat2pri\n");
+            break;
 
-		default:
-			return 0;
-			break;
+        default:
+            return 0;
+            break;
 
-		}
-		break;
-
-	default:
-		return 0;
+        }
 	}
 
+	if (strcmp(attr->attr.name, "battery_state") == 0) {
+	    val[0] = val[1] = 0xCF;
+	    status = bu_bc_write_cmd(info, BU_BC_CMD_GET_BAT_STATE, val[0], val[1], &ret_val[0], &ret_val[1]);
+	    if (status == 0) {
+	        switch(ret_val[0]) {
+
+	        case 0:
+	            return sprintf(buf, "idle\n");
+	            break;
+	        case 1:
+	            return sprintf(buf, "suspend\n");
+	            break;
+	        case 2:
+	            return sprintf(buf, "charge_bat1\n");
+	            break;
+	        case 3:
+	            return sprintf(buf, "charge_bat1_wait_bat2\n");
+	            break;
+	        case 4:
+	            return sprintf(buf, "charge_bat2\n");
+	            break;
+	        case 5:
+	            return sprintf(buf, "charge_bat2_wait_bat1\n");
+	            break;
+	        case 6:
+	            return sprintf(buf, "charge_both\n");
+	            break;
+	        case 7:
+	            return sprintf(buf, "bat1_charged\n");
+	            break;
+	        case 8:
+	            return sprintf(buf, "bat2_charged\n");
+	            break;
+	        case 9:
+	            return sprintf(buf, "both_charged\n");
+	            break;
+	        case 0xFF:
+	            return sprintf(buf, "no_dc_present\n");
+	            break;
+
+	        default:
+	            return 0;
+	            break;
+
+	        }
+	    }
+	    else
+	        return 0;
+
+	}
+
+	if (strcmp(attr->attr.name, "power_source_state") == 0) {
+	    val[0] = val[1] = 0xCD;
+	    status = bu_bc_write_cmd(info, BU_BC_CMD_GET_POWER_STATE, val[0], val[1], &ret_val[0], &ret_val[1]);
+	    if (status == 0) {
+	        return sprintf(buf, "%d\n", ret_val[0]);
+	    }
+	}
 	return 0;
 }
 
@@ -308,7 +327,7 @@ static ssize_t bu_bc_led_store_property(struct device *dev,
 	if ( status )
 		return -EINVAL;
 
-	dev_info(dev, "Set: Command %d (%s) with 0x%02x  0x%02x\n", cmd, attr->attr.name, val[0], val[1]);
+	dev_info(dev, "Set: Command 0x%02x (%s) with 0x%02x  0x%02x\n", cmd, attr->attr.name, val[0], val[1]);
 	status = bu_bc_write_cmd(info, cmd, val[0], val[1], &ret_val[0], &ret_val[1]);
 	if (status)
 		return status;
@@ -425,7 +444,7 @@ static int bu_bc_probe(struct i2c_client *client,
 
 
 #ifndef BU_BC_NOHW
-	val[0] = val[1] = 0;
+	val[0] = val[1] = 0xFD;
 	status = bu_bc_write_cmd(info, BU_BC_CMD_VERSION, val[0], val[1], &ret_val[0], &ret_val[1]);
 	if ( status ) {
 		dev_err(&client->dev, "No device found\n");
@@ -439,7 +458,7 @@ static int bu_bc_probe(struct i2c_client *client,
 #else
 	bu_bc_init_attrs(&client->dev);
 #endif
-	dev_info(&client->dev, "Probed\n");
+	dev_info(&client->dev, "Probed with fw version %d.%d\n", info->fw_ver >> 8, info->fw_ver & 0xff);
 	return status;
 
 }
