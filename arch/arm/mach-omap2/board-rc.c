@@ -491,12 +491,12 @@ static struct regulator_consumer_supply rc_vcc = {
 
 // The power gate to WiFI
 static struct regulator_consumer_supply rc_vmmc2_supply =
-	REGULATOR_SUPPLY("vmmc", "mmci-omap-hs.1");
+    REGULATOR_SUPPLY("vmmc_aux", "omap_hsmmc.1");
 
 static struct regulator_init_data vcc_wlan_reg_data = {
 	//.supply_regulator = "VCC33",
 	.constraints = {
-		.valid_ops_mask	= REGULATOR_CHANGE_STATUS,
+		.always_on     = 1,
 		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
 	},
 	.num_consumer_supplies = 1,
@@ -506,7 +506,7 @@ static struct regulator_init_data vcc_wlan_reg_data = {
 static struct fixed_voltage_config vcc_wlan_config = {
 	.supply_name = "VCC_WLAN",
 	.microvolts = 3300000,
-	.enabled_at_boot = 0,
+	.enabled_at_boot = 1,
 	.enable_high = 1,
 	.startup_delay = 10000,
 	.gpio = RC_WLAN_NPD,
@@ -559,10 +559,7 @@ static int rc_twl_gpio_setup(struct device *dev, unsigned gpio, unsigned ngpio)
 {
 	omap2_hsmmc_init(mmc);
 	rc_vmmc1_supply.dev = mmc[0].dev;
-#ifdef CONFIG_RC_WIFI
 	rc_vmmc2_supply.dev = mmc[1].dev;
-#endif
-
 	return 0;
 }
 
