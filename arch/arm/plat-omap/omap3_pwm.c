@@ -74,8 +74,8 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
 	omap_dm_timer_stop(pwm->gpt);
 	omap_dm_timer_set_match(pwm->gpt, 1, (0xFFFFFFFF - period_on));
 
-	// gtp, def_on=1, toggle=1, trigger=2
-	omap_dm_timer_set_pwm(pwm->gpt, 1, 1, 2);
+	// gtp, def_on=0, toggle=1, trigger=2
+	omap_dm_timer_set_pwm(pwm->gpt, 0, 1, 2);
 
 	// gpt, autoreload=1, VAL
 	omap_dm_timer_set_load_start(pwm->gpt, 1, (0xFFFFFFFF - period));
