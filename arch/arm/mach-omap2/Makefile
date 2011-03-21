@@ -136,7 +136,7 @@ obj-$(CONFIG_ARCH_OMAP2430)		+= opp2430_data.o
 obj-$(CONFIG_ARCH_OMAP2420)		+= omap_hwmod_2420_data.o
 obj-$(CONFIG_ARCH_OMAP2430)		+= omap_hwmod_2430_data.o
 ifeq ($(CONFIG_ARCH_AM35XX),y)
-obj-$(CONFIG_ARCH_OMAP3)		+= omap_hwmod_am35xx_data.o
+obj-$(CONFIG_ARCH_OMAP3)		+= omap_hwmod_3xxx_data.o
 else
 obj-$(CONFIG_ARCH_OMAP3)		+= omap_hwmod_3xxx_data.o
 endif
@@ -260,3 +260,7 @@ obj-y					+= $(smc91x-m) $(smc91x-y)
 
 smsc911x-$(CONFIG_SMSC911X)		:= gpmc-smsc911x.o
 obj-y					+= $(smsc911x-m) $(smsc911x-y)
+
+CFLAGS_REMOVE_usb-musb.o := -Os
+CFLAGS_REMOVE_omap_hwmod_3xxx_data.o := -Os
+CFLAGS_REMOVE_omap_hwmod.o := -Os

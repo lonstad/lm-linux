@@ -187,6 +187,15 @@ static struct omap_hwmod_ocp_if omap3_l4_per__uart4 = {
 	.user		= OCP_USER_MPU | OCP_USER_SDMA,
 };
 
+static struct omap_hwmod_ocp_if omap3_l4_core__uart4 = {
+    .master     = &omap3xxx_l4_per_hwmod,
+    .slave      = &omap3xxx_uart4_hwmod,
+    .clk        = "uart4_ick",
+    .addr       = omap3xxx_uart4_addr_space,
+    .addr_cnt   = ARRAY_SIZE(omap3xxx_uart4_addr_space),
+    .user       = OCP_USER_MPU | OCP_USER_SDMA,
+};
+
 /* I2C IP block address space length (in bytes) */
 #define OMAP2_I2C_AS_LEN		128
 
@@ -316,6 +325,9 @@ static struct omap_hwmod_ocp_if *omap3xxx_l4_core_masters[] = {
 	&omap3_l4_core__i2c1,
 	&omap3_l4_core__i2c2,
 	&omap3_l4_core__i2c3,
+#ifdef CONFIG_ARCH_AM35XX
+	&omap3_l4_core__uart4,
+#endif
 };
 
 /* L4 CORE */
@@ -338,7 +350,9 @@ static struct omap_hwmod_ocp_if *omap3xxx_l4_per_slaves[] = {
 /* Master interfaces on the L4_PER interconnect */
 static struct omap_hwmod_ocp_if *omap3xxx_l4_per_masters[] = {
 	&omap3_l4_per__uart3,
+#ifndef CONFIG_ARCH_AM35XX
 	&omap3_l4_per__uart4,
+#endif
 };
 
 /* L4 PER */
@@ -623,7 +637,42 @@ static struct omap_hwmod omap3xxx_uart3_hwmod = {
 };
 
 /* UART4 */
+#ifdef CONFIG_ARCH_AM35XX
+static struct omap_hwmod_irq_info uart4_mpu_irqs[] = {
+    { .irq = INT_35XX_UART4_IRQ, },
+};
 
+static struct omap_hwmod_dma_info uart4_sdma_reqs[] = {
+    { .name = "rx", .dma_req = AM35XX_DMA_UART4_RX, },
+    { .name = "tx", .dma_req = AM35XX_DMA_UART4_TX, },
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_uart4_slaves[] = {
+    &omap3_l4_core__uart4,
+};
+
+static struct omap_hwmod omap3xxx_uart4_hwmod = {
+    .name       = "uart4",
+    .mpu_irqs   = uart4_mpu_irqs,
+    .mpu_irqs_cnt   = ARRAY_SIZE(uart4_mpu_irqs),
+    .sdma_reqs  = uart4_sdma_reqs,
+    .sdma_reqs_cnt  = ARRAY_SIZE(uart4_sdma_reqs),
+    .main_clk   = "uart4_fck",
+    .prcm       = {
+        .omap2 = {
+            .module_offs = CORE_MOD,
+            .prcm_reg_id = 1,
+            .module_bit = AM35XX_EN_UART4_SHIFT,
+            .idlest_reg_id = 1,
+            .idlest_idle_bit = AM35XX_EN_UART4_SHIFT,
+        },
+    },
+    .slaves     = omap3xxx_uart4_slaves,
+    .slaves_cnt = ARRAY_SIZE(omap3xxx_uart4_slaves),
+    .class      = &uart_class,
+    .omap_chip  = OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
+};
+#else
 static struct omap_hwmod_irq_info uart4_mpu_irqs[] = {
 	{ .irq = INT_36XX_UART4_IRQ, },
 };
@@ -659,6 +708,7 @@ static struct omap_hwmod omap3xxx_uart4_hwmod = {
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3630ES1),
 };
 
+#endif
 static struct omap_hwmod_class i2c_class = {
 	.name = "i2c",
 	.sysc = &i2c_sysc,
@@ -1371,11 +1421,12 @@ static __initdata struct omap_hwmod *omap3xxx_hwmods[] = {
 	&omap3xxx_i2c1_hwmod,
 	&omap3xxx_i2c2_hwmod,
 	&omap3xxx_i2c3_hwmod,
+#ifndef CONFIG_ARCH_AM35XX
 	&omap34xx_sr1_hwmod,
 	&omap34xx_sr2_hwmod,
 	&omap36xx_sr1_hwmod,
 	&omap36xx_sr2_hwmod,
-
+#endif
 
 	/* gpio class */
 	&omap3xxx_gpio1_hwmod,

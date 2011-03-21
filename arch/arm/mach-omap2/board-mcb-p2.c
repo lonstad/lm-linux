@@ -599,16 +599,17 @@ static struct omap_musb_board_data musb_board_data = {
     .interface_type     = MUSB_INTERFACE_ULPI,
         .mode           = MUSB_OTG,
         .power          = 500,
-        .set_phy_power  = am35x_musb_phy_power,
-        .clear_irq      = am35x_musb_clear_irq,
-        .set_mode       = am35x_musb_set_mode,
-        .reset          = am35x_musb_reset,
+//        .set_phy_power  = am35x_musb_phy_power,
+//        .clear_irq      = am35x_musb_clear_irq,
+//      .set_mode       = am35x_musb_set_mode,
+//      .reset          = am35x_musb_reset,
     };
 
-static void __init mcb_init_early(void)
+static void __init mcb_init_irq(void)
 {
     omap2_init_common_infrastructure();
     omap2_init_common_devices(NULL, NULL);
+    omap_init_irq();
 }
 
 static __init void mcb_musb_init(void)
@@ -669,8 +670,7 @@ static void __init mcb_init(void)
 MACHINE_START(OMAP3517EVM, "DR MCB-P2 board")
 	.boot_params	= 0x80000100,
 	.map_io		= omap3_map_io,
-	.init_irq	= omap_init_irq,
-	.init_early = mcb_init_early,
+	.init_irq	= mcb_init_irq,
 	.reserve = omap_reserve,
 	.init_machine	= mcb_init,
 	.timer		= &omap_timer,

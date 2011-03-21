@@ -689,10 +689,11 @@ static struct omap_board_config_kernel rc_config[] __initdata = {
 };
 
 
-static void __init rc_init_early(void)
+static void __init rc_init_irq(void)
 {
     omap2_init_common_infrastructure();
     omap2_init_common_devices(mt46h32m32lf6_sdrc_params, NULL);
+    omap_init_irq();
 }
 
 static struct platform_device *rc_devices[] __initdata = {
@@ -825,8 +826,7 @@ MACHINE_START(OVERO, "Laerdal Remote Control")
 	.boot_params	= 0x80000100,
 	.map_io		= omap3_map_io,
 	.reserve	= omap_reserve,
-	.init_irq	= omap_init_irq,
-	.init_early = rc_init_early,
+	.init_irq	= rc_init_irq,
 	.init_machine	= rc_init,
 	.timer		= &omap_timer,
 MACHINE_END
