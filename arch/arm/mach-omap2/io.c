@@ -30,6 +30,7 @@
 
 #include <plat/sram.h>
 #include <plat/sdrc.h>
+#include <plat/gpmc.h>
 #include <plat/serial.h>
 
 #include "clock2xxx.h"
@@ -65,7 +66,7 @@ static struct map_desc omap24xx_io_desc[] __initdata = {
 	},
 };
 
-#ifdef CONFIG_SOC_OMAP2420
+#ifdef CONFIG_ARCH_OMAP2420
 static struct map_desc omap242x_io_desc[] __initdata = {
 	{
 		.virtual	= DSP_MEM_2420_VIRT,
@@ -89,7 +90,7 @@ static struct map_desc omap242x_io_desc[] __initdata = {
 
 #endif
 
-#ifdef CONFIG_SOC_OMAP2430
+#ifdef CONFIG_ARCH_OMAP2430
 static struct map_desc omap243x_io_desc[] __initdata = {
 	{
 		.virtual	= L4_WK_243X_VIRT,
@@ -174,18 +175,6 @@ static struct map_desc omap34xx_io_desc[] __initdata = {
 #endif
 };
 #endif
-
-#ifdef CONFIG_SOC_OMAPTI816X
-static struct map_desc omapti816x_io_desc[] __initdata = {
-	{
-		.virtual	= L4_34XX_VIRT,
-		.pfn		= __phys_to_pfn(L4_34XX_PHYS),
-		.length		= L4_34XX_SIZE,
-		.type		= MT_DEVICE
-	},
-};
-#endif
-
 #ifdef	CONFIG_ARCH_OMAP4
 static struct map_desc omap44xx_io_desc[] __initdata = {
 	{
@@ -252,7 +241,7 @@ static void __init _omap2_map_common_io(void)
 	omap_sram_init();
 }
 
-#ifdef CONFIG_SOC_OMAP2420
+#ifdef CONFIG_ARCH_OMAP2420
 void __init omap242x_map_common_io(void)
 {
 	iotable_init(omap24xx_io_desc, ARRAY_SIZE(omap24xx_io_desc));
@@ -261,7 +250,7 @@ void __init omap242x_map_common_io(void)
 }
 #endif
 
-#ifdef CONFIG_SOC_OMAP2430
+#ifdef CONFIG_ARCH_OMAP2430
 void __init omap243x_map_common_io(void)
 {
 	iotable_init(omap24xx_io_desc, ARRAY_SIZE(omap24xx_io_desc));
@@ -274,14 +263,6 @@ void __init omap243x_map_common_io(void)
 void __init omap34xx_map_common_io(void)
 {
 	iotable_init(omap34xx_io_desc, ARRAY_SIZE(omap34xx_io_desc));
-	_omap2_map_common_io();
-}
-#endif
-
-#ifdef CONFIG_SOC_OMAPTI816X
-void __init omapti816x_map_common_io(void)
-{
-	iotable_init(omapti816x_io_desc, ARRAY_SIZE(omapti816x_io_desc));
 	_omap2_map_common_io();
 }
 #endif
@@ -417,10 +398,15 @@ void __init omap2_init_common_infrastructure(void)
 void __init omap2_init_common_devices(struct omap_sdrc_params *sdrc_cs0,
 				      struct omap_sdrc_params *sdrc_cs1)
 {
-	if (cpu_is_omap24xx() || omap3_has_sdrc()) {
+	omap_serial_early_init();
+
+	omap_hwmod_late_init();
+
+	if (cpu_is_omap24xx() || cpu_is_omap34xx()) {
 		omap2_sdrc_init(sdrc_cs0, sdrc_cs1);
 		_omap2_init_reprogram_sdrc();
 	}
+	gpmc_init();
 
 	omap_irq_base_init();
 }

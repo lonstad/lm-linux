@@ -486,7 +486,7 @@ static void omap_uart_idle_init(struct omap_uart_state *uart)
 		mod_timer(&uart->timer, jiffies + uart->timeout);
 	omap_uart_smart_idle_enable(uart, 0);
 
-	if (cpu_is_omap34xx() && !cpu_is_ti816x()) {
+	if (cpu_is_omap34xx()) {
 		u32 mod = (uart->num > 1) ? OMAP3430_PER_MOD : CORE_MOD;
 		u32 wk_mask = 0;
 		u32 padconf = 0;
@@ -655,7 +655,7 @@ static void serial_out_override(struct uart_port *up, int offset, int value)
 }
 #endif
 
-static int __init omap_serial_early_init(void)
+void __init omap_serial_early_init(void)
 {
 	int i = 0;
 
@@ -672,7 +672,7 @@ static int __init omap_serial_early_init(void)
 
 		uart = kzalloc(sizeof(struct omap_uart_state), GFP_KERNEL);
 		if (WARN_ON(!uart))
-			return -ENODEV;
+			return;
 
 		uart->oh = oh;
 		uart->num = i++;
@@ -680,7 +680,7 @@ static int __init omap_serial_early_init(void)
 		num_uarts++;
 
 		/*
-		 * NOTE: omap_hwmod_setup*() has not yet been called,
+		 * NOTE: omap_hwmod_init() has not yet been called,
 		 *       so no hwmod functions will work yet.
 		 */
 
@@ -691,10 +691,7 @@ static int __init omap_serial_early_init(void)
 		 */
 		uart->oh->flags |= HWMOD_INIT_NO_IDLE | HWMOD_INIT_NO_RESET;
 	} while (1);
-
-	return 0;
 }
-core_initcall(omap_serial_early_init);
 
 /**
  * omap_serial_init_port() - initialize single serial port
@@ -762,7 +759,7 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 	p->private_data = uart;
 
 	/*
-	 * omap44xx, ti816x: Never read empty UART fifo
+	 * omap44xx: Never read empty UART fifo
 	 * omap3xxx: Never read empty UART fifo on UARTs
 	 * with IP rev >=0x52
 	 */
@@ -851,7 +848,7 @@ void __init omap_serial_init_port(struct omap_board_data *bdata)
 	}
 
 	/* Enable the MDR1 errata for OMAP3 */
-	if (cpu_is_omap34xx() && !cpu_is_ti816x())
+	if (cpu_is_omap34xx())
 		uart->errata |= UART_ERRATA_i202_MDR1_ACCESS;
 }
 

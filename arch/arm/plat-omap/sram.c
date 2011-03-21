@@ -242,14 +242,7 @@ static void __init omap_map_sram(void)
 	       omap_sram_size - SRAM_BOOTLOADER_SZ);
 }
 
-/*
- * Memory allocator for SRAM: calculates the new ceiling address
- * for pushing a function using the fncpy API.
- *
- * Note that fncpy requires the returned address to be aligned
- * to an 8-byte boundary.
- */
-void *omap_sram_push_address(unsigned long size)
+void * omap_sram_push(void * start, unsigned long size)
 {
 	if (size > (omap_sram_ceil - (omap_sram_base + SRAM_BOOTLOADER_SZ))) {
 		printk(KERN_ERR "Not enough space in SRAM\n");
@@ -257,7 +250,10 @@ void *omap_sram_push_address(unsigned long size)
 	}
 
 	omap_sram_ceil -= size;
-	omap_sram_ceil = ROUND_DOWN(omap_sram_ceil, FNCPY_ALIGN);
+	omap_sram_ceil = ROUND_DOWN(omap_sram_ceil, sizeof(void *));
+	memcpy((void *)omap_sram_ceil, start, size);
+	flush_icache_range((unsigned long)omap_sram_ceil,
+		(unsigned long)(omap_sram_ceil + size));
 
 	return (void *)omap_sram_ceil;
 }
@@ -316,7 +312,7 @@ u32 omap2_set_prcm(u32 dpll_ctrl_val, u32 sdrc_rfr_val, int bypass)
 }
 #endif
 
-#ifdef CONFIG_SOC_OMAP2420
+#ifdef CONFIG_ARCH_OMAP2420
 static int __init omap242x_sram_init(void)
 {
 	_omap2_sram_ddr_init = omap_sram_push(omap242x_sram_ddr_init,
@@ -337,7 +333,7 @@ static inline int omap242x_sram_init(void)
 }
 #endif
 
-#ifdef CONFIG_SOC_OMAP2430
+#ifdef CONFIG_ARCH_OMAP2430
 static int __init omap243x_sram_init(void)
 {
 	_omap2_sram_ddr_init = omap_sram_push(omap243x_sram_ddr_init,
@@ -409,6 +405,20 @@ static inline int omap34xx_sram_init(void)
 }
 #endif
 
+#ifdef CONFIG_ARCH_OMAP4
+static int __init omap44xx_sram_init(void)
+{
+	printk(KERN_ERR "FIXME: %s not implemented\n", __func__);
+
+	return -ENODEV;
+}
+#else
+static inline int omap44xx_sram_init(void)
+{
+	return 0;
+}
+#endif
+
 int __init omap_sram_init(void)
 {
 	omap_detect_sram();
@@ -422,6 +432,8 @@ int __init omap_sram_init(void)
 		omap243x_sram_init();
 	else if (cpu_is_omap34xx())
 		omap34xx_sram_init();
+	else if (cpu_is_omap44xx())
+		omap44xx_sram_init();
 
 	return 0;
 }

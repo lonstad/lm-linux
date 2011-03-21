@@ -112,7 +112,6 @@ static inline int omap1_i2c_add_bus(int bus_id)
 }
 
 
-#ifdef CONFIG_ARCH_OMAP2PLUS
 /*
  * XXX This function is a temporary compatibility wrapper - only
  * needed until the I2C driver can be converted to call
@@ -131,6 +130,7 @@ static struct omap_device_pm_latency omap_i2c_latency[] = {
 	},
 };
 
+#ifdef CONFIG_ARCH_OMAP2PLUS
 static inline int omap2_i2c_add_bus(int bus_id)
 {
 	int l;

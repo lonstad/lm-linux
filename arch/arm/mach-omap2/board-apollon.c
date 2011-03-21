@@ -274,10 +274,13 @@ static struct omap_board_config_kernel apollon_config[] __initdata = {
 	{ OMAP_TAG_LCD,		&apollon_lcd_config },
 };
 
-static void __init omap_apollon_init_early(void)
+static void __init omap_apollon_init_irq(void)
 {
+	omap_board_config = apollon_config;
+	omap_board_config_size = ARRAY_SIZE(apollon_config);
 	omap2_init_common_infrastructure();
 	omap2_init_common_devices(NULL, NULL);
+	omap_init_irq();
 }
 
 static void __init apollon_led_init(void)
@@ -317,8 +320,6 @@ static void __init omap_apollon_init(void)
 	u32 v;
 
 	omap2420_mux_init(board_mux, OMAP_PACKAGE_ZAC);
-	omap_board_config = apollon_config;
-	omap_board_config_size = ARRAY_SIZE(apollon_config);
 
 	apollon_init_smc91x();
 	apollon_led_init();
@@ -354,10 +355,9 @@ static void __init omap_apollon_map_io(void)
 MACHINE_START(OMAP_APOLLON, "OMAP24xx Apollon")
 	/* Maintainer: Kyungmin Park <kyungmin.park@samsung.com> */
 	.boot_params	= 0x80000100,
-	.reserve	= omap_reserve,
 	.map_io		= omap_apollon_map_io,
-	.init_early	= omap_apollon_init_early,
-	.init_irq	= omap_init_irq,
+	.reserve	= omap_reserve,
+	.init_irq	= omap_apollon_init_irq,
 	.init_machine	= omap_apollon_init,
 	.timer		= &omap_timer,
 MACHINE_END

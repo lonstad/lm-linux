@@ -6,7 +6,7 @@
  * Copyright (C) 2005 Nokia Corporation
  * Written by Tony Lindgren <tony@atomide.com>
  *
- * Copyright (C) 2009-11 Texas Instruments
+ * Copyright (C) 2009 Texas Instruments
  * Added OMAP4 support - Santosh Shilimkar <santosh.shilimkar@ti.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -191,17 +191,10 @@ static void __init omap3_check_features(void)
 	if (!cpu_is_omap3505() && !cpu_is_omap3517())
 		omap3_features |= OMAP3_HAS_IO_WAKEUP;
 
-	omap3_features |= OMAP3_HAS_SDRC;
-
 	/*
 	 * TODO: Get additional info (where applicable)
 	 *       e.g. Size of L2 cache.
 	 */
-}
-
-static void __init ti816x_check_features(void)
-{
-	omap3_features = OMAP3_HAS_NEON;
 }
 
 static void __init omap3_check_revision(void)
@@ -294,20 +287,6 @@ static void __init omap3_check_revision(void)
 			omap_chip.oc |= CHIP_IS_OMAP3630ES1_2;
 		}
 		break;
-	case 0xb81e:
-		omap_chip.oc = CHIP_IS_TI816X;
-
-		switch (rev) {
-		case 0:
-			omap_revision = TI8168_REV_ES1_0;
-			break;
-		case 1:
-			omap_revision = TI8168_REV_ES1_1;
-			break;
-		default:
-			omap_revision =  TI8168_REV_ES1_1;
-		}
-		break;
 	default:
 		/* Unknown default to latest silicon rev as default*/
 		omap_revision =  OMAP3630_REV_ES1_2;
@@ -328,7 +307,7 @@ static void __init omap4_check_revision(void)
 	 */
 	idcode = read_tap_reg(OMAP_TAP_IDCODE);
 	hawkeye = (idcode >> 12) & 0xffff;
-	rev = (idcode >> 28) & 0xf;
+	rev = (idcode >> 28) & 0xff;
 
 	/*
 	 * Few initial ES2.0 samples IDCODE is same as ES1.0
@@ -347,31 +326,22 @@ static void __init omap4_check_revision(void)
 			omap_chip.oc |= CHIP_IS_OMAP4430ES1;
 			break;
 		case 1:
+			omap_revision = OMAP4430_REV_ES2_0;
+			omap_chip.oc |= CHIP_IS_OMAP4430ES2;
+			break;
 		default:
 			omap_revision = OMAP4430_REV_ES2_0;
 			omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-		}
-		break;
-	case 0xb95c:
-		switch (rev) {
-		case 3:
-			omap_revision = OMAP4430_REV_ES2_1;
-			omap_chip.oc |= CHIP_IS_OMAP4430ES2_1;
-			break;
-		case 4:
-		default:
-			omap_revision = OMAP4430_REV_ES2_2;
-			omap_chip.oc |= CHIP_IS_OMAP4430ES2_2;
-		}
-		break;
+	}
+	break;
 	default:
-		/* Unknown default to latest silicon rev as default */
-		omap_revision = OMAP4430_REV_ES2_2;
-		omap_chip.oc |= CHIP_IS_OMAP4430ES2_2;
+		/* Unknown default to latest silicon rev as default*/
+		omap_revision = OMAP4430_REV_ES2_0;
+		omap_chip.oc |= CHIP_IS_OMAP4430ES2;
 	}
 
-	pr_info("OMAP%04x ES%d.%d\n", omap_rev() >> 16,
-		((omap_rev() >> 12) & 0xf), ((omap_rev() >> 8) & 0xf));
+	pr_info("OMAP%04x ES%d.0\n",
+			omap_rev() >> 16, ((omap_rev() >> 12) & 0xf) + 1);
 }
 
 #define OMAP3_SHOW_FEATURE(feat)		\
@@ -402,8 +372,6 @@ static void __init omap3_cpuinfo(void)
 			/* Already set in omap3_check_revision() */
 			strcpy(cpu_name, "AM3505");
 		}
-	} else if (cpu_is_ti816x()) {
-		strcpy(cpu_name, "TI816X");
 	} else if (omap3_has_iva() && omap3_has_sgx()) {
 		/* OMAP3430, OMAP3525, OMAP3515, OMAP3503 devices */
 		strcpy(cpu_name, "OMAP3430/3530");
@@ -418,7 +386,7 @@ static void __init omap3_cpuinfo(void)
 		strcpy(cpu_name, "OMAP3503");
 	}
 
-	if (cpu_is_omap3630() || cpu_is_ti816x()) {
+	if (cpu_is_omap3630()) {
 		switch (rev) {
 		case OMAP_REVBITS_00:
 			strcpy(cpu_rev, "1.0");
@@ -494,13 +462,7 @@ void __init omap2_check_revision(void)
 		omap24xx_check_revision();
 	} else if (cpu_is_omap34xx()) {
 		omap3_check_revision();
-
-		/* TI816X doesn't have feature register */
-		if (!cpu_is_ti816x())
-			omap3_check_features();
-		else
-			ti816x_check_features();
-
+		omap3_check_features();
 		omap3_cpuinfo();
 		return;
 	} else if (cpu_is_omap44xx()) {

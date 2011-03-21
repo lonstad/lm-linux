@@ -1,7 +1,7 @@
 /*
  * omap_hwmod macros, structures
  *
- * Copyright (C) 2009-2011 Nokia Corporation
+ * Copyright (C) 2009-2010 Nokia Corporation
  * Paul Walmsley
  *
  * Created in collaboration with (alphabetical order): Benoît Cousson,
@@ -30,7 +30,6 @@
 #define __ARCH_ARM_PLAT_OMAP_INCLUDE_MACH_OMAP_HWMOD_H
 
 #include <linux/kernel.h>
-#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/ioport.h>
 #include <linux/spinlock.h>
@@ -91,9 +90,6 @@ extern struct omap_hwmod_sysc_fields omap_hwmod_sysc_type2;
 struct omap_hwmod_mux_info {
 	int				nr_pads;
 	struct omap_device_pad		*pads;
-	int				nr_pads_dynamic;
-	struct omap_device_pad		**pads_dynamic;
-	bool				enabled;
 };
 
 /**
@@ -182,8 +178,7 @@ struct omap_hwmod_omap2_firewall {
 #define ADDR_TYPE_RT		(1 << 1)
 
 /**
- * struct omap_hwmod_addr_space - address space handled by the hwmod
- * @name: name of the address space
+ * struct omap_hwmod_addr_space - MPU address space handled by the hwmod
  * @pa_start: starting physical address
  * @pa_end: ending physical address
  * @flags: (see omap_hwmod_addr_space.flags macros above)
@@ -192,7 +187,6 @@ struct omap_hwmod_omap2_firewall {
  * structure.  GPMC is one example.
  */
 struct omap_hwmod_addr_space {
-	const char *name;
 	u32 pa_start;
 	u32 pa_end;
 	u8 flags;
@@ -376,10 +370,8 @@ struct omap_hwmod_omap4_prcm {
  *     of standby, rather than relying on module smart-standby
  * HWMOD_INIT_NO_RESET: don't reset this module at boot - important for
  *     SDRAM controller, etc. XXX probably belongs outside the main hwmod file
- *     XXX Should be HWMOD_SETUP_NO_RESET
  * HWMOD_INIT_NO_IDLE: don't idle this module at boot - important for SDRAM
  *     controller, etc. XXX probably belongs outside the main hwmod file
- *     XXX Should be HWMOD_SETUP_NO_IDLE
  * HWMOD_NO_AUTOIDLE: disable module autoidle (OCP_SYSCONFIG.AUTOIDLE)
  *     when module is enabled, rather than the default, which is to
  *     enable autoidle
@@ -543,12 +535,11 @@ struct omap_hwmod {
 	const struct omap_chip_id	omap_chip;
 };
 
-int omap_hwmod_register(struct omap_hwmod **ohs);
+int omap_hwmod_init(struct omap_hwmod **ohs);
 struct omap_hwmod *omap_hwmod_lookup(const char *name);
 int omap_hwmod_for_each(int (*fn)(struct omap_hwmod *oh, void *data),
 			void *data);
-
-int __init omap_hwmod_setup_one(const char *name);
+int omap_hwmod_late_init(void);
 
 int omap_hwmod_enable(struct omap_hwmod *oh);
 int _omap_hwmod_enable(struct omap_hwmod *oh);

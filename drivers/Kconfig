@@ -117,6 +117,4 @@ source "drivers/staging/Kconfig"
 source "drivers/platform/Kconfig"
 
 source "drivers/clk/Kconfig"
-
-source "drivers/hwspinlock/Kconfig"
 endmenu
