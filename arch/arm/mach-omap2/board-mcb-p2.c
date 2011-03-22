@@ -597,7 +597,7 @@ static struct omap_board_mux board_mux[] __initdata = {
 
 static struct omap_musb_board_data musb_board_data = {
     .interface_type     = MUSB_INTERFACE_ULPI,
-        .mode           = MUSB_OTG,
+        .mode           = MUSB_HOST,
         .power          = 500,
 //        .set_phy_power  = am35x_musb_phy_power,
 //        .clear_irq      = am35x_musb_clear_irq,
