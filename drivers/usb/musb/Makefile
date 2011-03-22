@@ -43,6 +43,3 @@ ifneq ($(CONFIG_MUSB_PIO_ONLY),y)
     endif
   endif
 endif
-
-CFLAGS_REMOVE_musb_core.o := -Os
-CFLAGS_REMOVE_am35x.o := -Os

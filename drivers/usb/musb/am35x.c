@@ -332,7 +332,7 @@ eoi:
 	return ret;
 }
 
-static int am35x_musb_set_mode_ex(struct musb *musb, u8 musb_mode)
+static int am35x_musb_set_mode(struct musb *musb, u8 musb_mode)
 {
 	struct device *dev = musb->controller;
 	struct musb_hdrc_platform_data *plat = dev->platform_data;
@@ -448,7 +448,7 @@ static const struct musb_platform_ops am35x_ops = {
 	.enable		= am35x_musb_enable,
 	.disable	= am35x_musb_disable,
 
-	.set_mode	= am35x_musb_set_mode_ex,
+	.set_mode	= am35x_musb_set_mode,
 	.try_idle	= am35x_musb_try_idle,
 
 	.set_vbus	= am35x_musb_set_vbus,
