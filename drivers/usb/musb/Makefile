@@ -29,20 +29,27 @@ obj-$(CONFIG_USB_MUSB_UX500)			+= ux500.o
 ifneq ($(CONFIG_MUSB_PIO_ONLY),y)
 
   ifeq ($(CONFIG_USB_INVENTRA_DMA),y)
-    musb_hdrc-y			+= musbhsdma.o
+    musb_hdrc-objs		+= musbhsdma.o
 
   else
     ifeq ($(CONFIG_USB_TI_CPPI_DMA),y)
-      musb_hdrc-y		+= cppi_dma.o
+      musb_hdrc-objs		+= cppi_dma.o
 
     else
-      ifeq ($(CONFIG_USB_TUSB_OMAP_DMA),y)
-	musb_hdrc-y		+= tusb6010_omap.o
+      ifeq ($(CONFIG_USB_TI_CPPI41_DMA),y)
+	musb_hdrc-objs        += cppi41_dma.o cppi41.o
 
+	ifeq ($(CONFIG_USB_TUSB_OMAP_DMA),y)
+          musb_hdrc-objs		+= tusb6010_omap.o
+
+	endif
       endif
     endif
   endif
 endif
 
 CFLAGS_REMOVE_musb_core.o := -Os
+CFLAGS_REMOVE_musb_host.o := -Os
 CFLAGS_REMOVE_am35x.o := -Os
+CFLAGS_REMOVE_cppi41.o := -Os
+CFLAGS_REMOVE_cppi41_dma.o := -Os

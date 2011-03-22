@@ -183,6 +183,7 @@ static struct platform_device musb_device = {
 
 void __init usb_musb_init(struct omap_musb_board_data *board_data)
 {
+    musb_resources[0].end = musb_resources[0].start + SZ_4K - 1;
 	if (cpu_is_omap243x()) {
 		musb_resources[0].start = OMAP243X_HS_BASE;
 	} else if (cpu_is_omap3517() || cpu_is_omap3505()) {
@@ -193,6 +194,9 @@ void __init usb_musb_init(struct omap_musb_board_data *board_data)
 		board_data->clear_irq = am35x_musb_clear_irq;
 		board_data->set_mode = am35x_musb_set_mode;
 		board_data->reset = am35x_musb_reset;
+		musb_resources[0].end = musb_resources[0].start + (2 * SZ_16K) - 1;
+		musb_config.ram_bits = 13;
+
 	} else if (cpu_is_omap34xx()) {
 		musb_resources[0].start = OMAP34XX_HSUSB_OTG_BASE;
 	} else if (cpu_is_omap44xx()) {
@@ -200,7 +204,7 @@ void __init usb_musb_init(struct omap_musb_board_data *board_data)
 		musb_resources[1].start = OMAP44XX_IRQ_HS_USB_MC_N;
 		musb_resources[2].start = OMAP44XX_IRQ_HS_USB_DMA_N;
 	}
-	musb_resources[0].end = musb_resources[0].start + SZ_4K - 1;
+
 
 	/*
 	 * REVISIT: This line can be removed once all the platforms using
