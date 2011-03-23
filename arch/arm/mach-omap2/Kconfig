@@ -213,12 +213,16 @@ config MACH_MCB
 	select OMAP_PACKAGE_CUS
 	select ARCH_AM35XX
 	
+config MACH_MCB_ETH_FUSE
+    bool "Use FUSE MAC address"
+    depends on MACH_MCB
+    
 choice
 	prompt "Select MCB version"
 	depends on MACH_MCB
 	help
 	  Select one of different versions
-
+    
 config MCB_P1
 	bool "Prototype 1"
 	
